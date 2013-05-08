@@ -1,0 +1,6 @@
+name = HopForm
+
+core = 7.x
+
+dependencies[] = form_builder
+dependencies[] = entity

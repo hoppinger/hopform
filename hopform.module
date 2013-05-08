@@ -1,0 +1,317 @@
+<?php
+
+define('HOPFORM_FORM_PREFIX', 'hopform_form_display_');
+
+/**
+ * Implements hook_hook_info().
+ */
+function hopform_hook_info() {
+  return array(
+    'hopform_elements'       => array('group' => 'hopform'),
+    'hopform_elements_alter' => array('group' => 'hopform'),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function hopform_menu() {
+  $items = array();
+
+  $items['form/%hopform_form'] = array(
+    'title callback' => 'hopform_form_page_title',
+    'title arguments' => array(1),
+    'page callback' => 'hopform_form_page_view',
+    'page arguments' => array(1),
+    'access callback' => 'hopform_form_access',
+    'access arguments' => array('view', 1),
+    'file' => 'hopform.pages.inc',
+  );
+  $items['form/%hopform_form/view'] = array(
+    'title' => 'View',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+  $items['form/%hopform_form/edit'] = array(
+    'title' => 'Edit',
+    'page callback' => 'hopform_form_page_edit',
+    'page arguments' => array(1),
+    'access callback' => 'hopform_form_access',
+    'access arguments' => array('update', 1),
+    'weight' => 0,
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+    'file' => 'hopform.pages.inc',
+  );
+  $items['form/%hopform_form/delete'] = array(
+    'title' => 'Delete',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('hopform_form_delete_confirm', 1),
+    'access callback' => 'hopform_form_access',
+    'access arguments' => array('delete', 1),
+    'weight' => 1,
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_INLINE,
+    'file' => 'hopform.pages.inc',
+  );
+  $items['form/%hopform_form/form'] = array(
+    'title' => 'Edit form',
+    'page callback' => 'hopform_form_page_form_edit',
+    'page arguments' => array(1),
+    'access callback' => 'hopform_form_access',
+    'access arguments' => array('form_update', 1),
+    'weight' => 0,
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+    'file' => 'hopform.pages.inc',
+  );
+  $items['form/%hopform_form/actions'] = array(
+    'title' => 'Edit actions',
+    'page callback' => 'hopform_form_page_actions_edit',
+    'page arguments' => array(1),
+    'access callback' => 'hopform_form_access',
+    'access arguments' => array('actions_update', 1),
+    'weight' => 0,
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+    'file' => 'hopform.pages.inc',
+  );
+
+
+  return $items;
+}
+
+/**
+ * Implements hook_admin_paths().
+ */
+function hopform_admin_paths() {
+  if (variable_get('node_admin_theme')) {
+    $paths = array(
+      'form/*/edit' => TRUE,
+      'form/*/form' => TRUE,
+      'form/*/delete' => TRUE,
+    );
+    return $paths;
+  }
+}
+
+/**
+ * Implements hook_entity_info().
+ */
+function hopform_entity_info() {
+  $info = array(
+    'label' => t('Form'),
+    'controller class' => 'EntityAPIController',
+    'base table' => 'hopform_form',
+    'fieldable' => TRUE,
+    'entity keys' => array(
+      'id' => 'fid',
+      'bundle' => 'type',
+      'label' => 'title',
+    ),
+    'bundles' => array(),
+    'bundle keys' => array(
+      'bundle' => 'type',
+    ),
+    'view modes' => array(
+      'full' => array(
+        'label' => t('Full content'),
+        'custom settings' => FALSE,
+      ),
+    ),
+  );
+
+  foreach (hopform_form_types() as $type => $type_info) {
+    $info['bundles'][$type] = array(
+      'label' => $type_info->label,
+    );
+  }
+
+  return array('hopform_form' => $info);
+}
+
+/**
+ * Get all the available form types.
+ */
+function hopform_form_types() {
+  $types = &drupal_static(__FUNCTION__);
+
+  if (isset($types)) {
+    return $types;
+  }
+
+  if ($cache = cache_get(__FUNCTION__)) {
+    $types = $cache->data;
+    return $types;
+  }
+
+  $types = _hopform_form_types();
+  cache_set(__FUNCTION__, $types);
+  return $types;
+}
+
+/**
+ * Collect all the available form types. Should not be used directly. Call 
+ * hopform_form_types() instead.
+ */
+function _hopform_form_types() {
+  $types = array();
+  foreach (module_implements('hopform_form_type_info') as $module) {
+    if (!($result = module_invoke($module, 'hopform_form_type_info'))) {
+      continue;
+    }
+
+    foreach ($result as $type => $info) {
+      $info = (object) $info;
+      $info->type = $type;
+      $info->module = $module;
+      $types[$type] = $info;
+    }
+  }
+
+  return $types;
+}
+
+/**
+ * Menu load callback for hopform_form_type.
+ */
+function hopform_form_type_load($name) {
+  $type = strtr($name, array('-' => '_'));
+  $types = hopform_form_types();
+
+  return !empty($types[$type]) ? $types[$type] : FALSE;
+}
+
+/**
+ * hopform_form crud callbacks.
+ */
+function hopform_form_load($fid) {
+  $forms = hopform_form_load_multiple(array($fid));
+  return $forms ? reset($forms) : FALSE;
+}
+function hopform_form_load_multiple($fids) {
+  return entity_load('hopform_form', $fids);
+}
+function hopform_form_view_multiple($forms, $view_mode = 'full') {
+  return entity_view('hopform_form', $forms, $view_mode);
+}
+function hopform_form_save($form) {
+  return entity_save('hopform_form', $form);
+}
+
+/**
+ * Menu title callback.
+ */
+function hopform_form_page_title($form) {
+  return $form->title;
+}
+
+/**
+ * Access callback.
+ */
+function hopform_form_access($op, $form) {
+  return TRUE;
+}
+
+/**
+ * Get the form_id for a form.
+ */
+function hopform_form_form_id($form) {
+  return $form->fid;
+}
+
+/**
+ * Get the form for a form_id.
+ */
+function hopform_form_id_form($form_id) {
+  return hopform_form_load($form_id);
+}
+
+/**
+ * Get all the available hopform elements.
+ */
+function hopform_elements() {
+  $elements = &drupal_static(__FUNCTION__);
+
+  if (isset($elements)) {
+    return $elements;
+  }
+
+  $elements = module_invoke_all(__FUNCTION__);
+  drupal_alter(__FUNCTION__, $elements);
+
+  return $elements;
+}
+
+/**
+ * Implements hook_form_builder_types().
+ */
+function hopform_form_builder_types() {
+  $elements = hopform_elements();
+
+  // register all our types as form type for form_builder and assign the correct
+  // elements to it.
+  $types = array();
+  foreach (hopform_form_types() as $type => $info) {
+    if (empty($info->elements)) {
+      $types['hopform_' . $type] = $elements;
+      continue;
+    }
+    
+    $types['hopform_' . $type] = array();
+    foreach ($info->elements as $element_type) {
+      if (!empty($elements[$element_type])) {
+        $types['hopform_' . $type][$element_type] = $elements[$element_type];
+      }
+    }
+  }
+
+  return $types;
+}
+
+/**
+ * Implements hook_form_builder_load().
+ */
+function hopform_form_builder_load($form_type, $form_id) {
+  if (substr($form_type, 0, 8) != 'hopform_') {
+    return;
+  }
+
+  $form = hopform_form_id_form($form_id);
+  if (!$form) {
+    array('#hopform' => TRUE);
+  }
+
+  return ($form->form ? $form->form : array()) + array('#hopform' => TRUE);
+}
+
+function hopform_forms($form_id) {
+  if (substr($form_id, 0, strlen(HOPFORM_FORM_PREFIX)) != HOPFORM_FORM_PREFIX) {
+    return;
+  }
+
+  $fid = substr($form_id, strlen(HOPFORM_FORM_PREFIX));
+  $form = hopform_form_id_form($fid);
+  if (!$form) { return; }
+
+  return array(
+    $form_id => array(
+      'callback' => 'hopform_form_display_form',
+      'callback arguments' => array($form),
+    ),
+  );
+}
+
+function hopform_form_display($form) {
+  return drupal_get_form(HOPFORM_FORM_PREFIX . $form->fid);
+}
+
+function hopform_form_display_form($form, &$form_state, $f) {
+  if (!empty($f->form)) {
+    foreach (element_children($f->form) as $key) if (!empty($f->form[$key])) {
+      $form[$key] = $f->form[$key];
+    }
+  }
+
+  return $form;
+}

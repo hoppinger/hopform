@@ -1,0 +1,79 @@
+<?php
+
+function hopform_schema() {
+  $schema = array();
+
+  $schema['hopform_form'] = array(
+    'description' => 'The base table for Hopform Forms.',
+    'fields' => array(
+      'fid' => array(
+        'description' => 'The primary identifier for a form.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'type' => array(
+        'description' => 'The type of this form.',
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'title' => array(
+        'description' => 'The title of this form, always treated as non-markup plain text.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'uid' => array(
+        'description' => 'The {users}.uid that owns this form; initially, this is the user that created it.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'status' => array(
+        'description' => 'Boolean indicating whether the form is published (visible to non-administrators).',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 1,
+      ),
+      'created' => array(
+        'description' => 'The Unix timestamp when the form was created.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'changed' => array(
+        'description' => 'The Unix timestamp when the form was most recently saved.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'form' => array(
+        'type' => 'blob',
+        'not null' => FALSE,
+        'size' => 'big',
+        'serialize' => TRUE,
+        'description' => 'A form API array',
+      ),
+    ),
+    'indexes' => array(
+      'form_changed'        => array('changed'),
+      'form_created'        => array('created'),
+      'form_status_type'    => array('status', 'type', 'fid'),
+      'form_title_type'     => array('title', array('type', 4)),
+      'form_type'           => array(array('type', 4)),
+      'uid'                 => array('uid'),
+    ),
+    'foreign keys' => array(
+      'form_author' => array(
+        'table' => 'users',
+        'columns' => array('uid' => 'uid'),
+      ),
+    ),
+    'primary key' => array('fid'),
+  );
+
+  return $schema;
+}

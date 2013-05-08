@@ -1,0 +1,51 @@
+<?php
+
+function hopform_ui_menu() {
+  $items = array();
+
+  $items['admin/structure/hopform'] = array(
+    'title' => 'Hopform',
+    'page callback' => 'hopform_ui_form_type_overview',
+    'access arguments' => array('administer hopform types'),
+    'file' => 'hopform_ui.admin.inc',
+  );
+
+  $items['admin/structure/hopform/list'] = array(
+    'title' => 'List',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+
+  $items['admin/structure/hopform/%hopform_form_type'] = array(
+    'title' => 'Edit Hopform form type',
+    'title callback' => 'hopform_form_type_page_title',
+    'title arguments' => array(4),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('hopform_form_type_form', 4),
+    'access arguments' => array('administer hopform types'),
+    'file' => 'hopform_ui.admin.inc',
+  );
+
+  return $items;
+}
+
+function hopform_ui_entity_info_alter(&$info) {
+  foreach ($info['hopform_form']['bundles'] as $type => $type_info) {
+    $info['hopform']['bundles'][$type]['admin'] = array(
+      'path' => 'admin/structure/hopform/%hopform_form_type',
+      'real path' => 'admin/structure/hopform/' . str_replace('_', '-', $type),
+      'bundle argument' => 3,
+      'access arguments' => array('administer hopform types'),
+    );
+  }
+}
+
+function hopform_ui_hopform_form_type_info() {
+  $info = array();
+
+  $info['form'] = array(
+    'label' => 'Form',
+  );
+
+  return $info;
+}
