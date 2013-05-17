@@ -75,5 +75,54 @@ function hopform_schema() {
     'primary key' => array('fid'),
   );
 
+  $schema['hopform_form_actions'] = array(
+    'description' => 'The actions table for Hopform Forms.',
+    'fields' => array(
+      'aid' => array(
+        'description' => 'The primary identifier for an action.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'fid' => array(
+        'description' => 'The primary identifier of a form.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'type' => array(
+        'description' => 'The type of this action.',
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'settings' => array(
+        'type' => 'blob',
+        'not null' => FALSE,
+        'size' => 'big',
+        'serialize' => TRUE,
+        'description' => 'A settings array',
+      ),
+      'weight' => array(
+        'description' => 'The weight of the action.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'indexes' => array(
+      'fid' => array('fid'),
+    ),
+    'foreign keys' => array(
+      'form' => array(
+        'table' => 'hopform_form',
+        'columns' => array('fid' => 'fid'),
+      ),
+    ),
+    'primary key' => array('aid'),
+  );
+
   return $schema;
 }

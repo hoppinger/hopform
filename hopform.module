@@ -7,8 +7,11 @@ define('HOPFORM_FORM_PREFIX', 'hopform_form_display_');
  */
 function hopform_hook_info() {
   return array(
-    'hopform_elements'       => array('group' => 'hopform'),
-    'hopform_elements_alter' => array('group' => 'hopform'),
+    'hopform_elements'          => array('group' => 'hopform'),
+    'hopform_elements_alter'    => array('group' => 'hopform'),
+
+    'hopform_action_info'       => array('group' => 'hopform'),
+    'hopform_action_info_alter' => array('group' => 'hopform'),
   );
 }
 
@@ -18,6 +21,27 @@ function hopform_hook_info() {
 function hopform_menu() {
   $items = array();
 
+  // Form adding interface
+  $items['form/add'] = array(
+    'title' => 'Add form',
+    'page callback' => 'hopform_form_add_page',
+    'access callback' => '_hopform_form_add_access',
+    'file' => 'hopform.pages.inc',
+  );
+  foreach (hopform_form_types(TRUE) as $type) {
+    $items['form/add/' . str_replace('_', '-', $type->type)] = array(
+      'title' => $type->label,
+      'title callback' => 'check_plain',
+      'page callback' => 'hopform_form_page_add',
+      'page arguments' => array($type->type),
+      'access callback' => 'hopform_form_access',
+      'access arguments' => array('create', $type->type),
+      'description' => !empty($type->description) ? $type->description : '',
+      'file' => 'hopform.pages.inc',
+    );
+  }
+
+  // Form entity display and update interface
   $items['form/%hopform_form'] = array(
     'title callback' => 'hopform_form_page_title',
     'title arguments' => array(1),
@@ -76,7 +100,57 @@ function hopform_menu() {
     'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
     'file' => 'hopform.pages.inc',
   );
+  $items['form/%hopform_form/actions/add'] = array(
+    'title' => 'Add action',
+    'page callback' => 'hopform_form_page_actions_action_add_page',
+    'page arguments' => array(1),
+    'access callback' => 'hopform_form_access',
+    'access arguments' => array('actions_update', 1),
+    'weight' => 0,
+    'type' => MENU_LOCAL_ACTION,
+    'file' => 'hopform.pages.inc',
+  );
 
+  foreach (hopform_actions(TRUE) as $action) {
+    $items['form/%hopform_form/actions/add/' . str_replace('_', '-', $action['action'])] = array(
+      'title' => $action['label'],
+      'title callback' => 'check_plain',
+      'page callback' => 'hopform_form_page_actions_action_add',
+      'page arguments' => array(1, $action['action']),
+      'access callback' => 'hopform_form_access',
+      'access arguments' => array('actions_update', 1),
+      'description' => !empty($action['description']) ? $action['description'] : '',
+      'file' => 'hopform.pages.inc',
+    );
+  }
+
+  $items['form/%hopform_form/actions/%hopform_form_action/edit'] = array(
+    'title callback' => 'hopform_form_page_actions_action_title',
+    'title arguments' => array(1,3),
+    'page callback' => 'hopform_form_page_actions_action_edit',
+    'page arguments' => array(1,3),
+    'access callback' => 'hopform_form_access',
+    'access arguments' => array('actions_update', 1),
+    'file' => 'hopform.pages.inc',
+  );
+  $items['form/%hopform_form/actions/%hopform_form_action/delete'] = array(
+    'title callback' => 'hopform_form_page_actions_action_title',
+    'title arguments' => array(1,3),
+    'page callback' => 'hopform_form_page_actions_action_delete',
+    'page arguments' => array(1,3),
+    'access callback' => 'hopform_form_access',
+    'access arguments' => array('actions_update', 1),
+    'file' => 'hopform.pages.inc',
+  );
+
+  $items['admin/content/forms'] = array(
+    'title' => 'Forms',
+    'page callback' => 'hopform_form_page_overview',
+    'access arguments' => array('administer hopform'),
+    'file' => 'hopform.pages.inc',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 5,
+  );
 
   return $items;
 }
@@ -85,13 +159,31 @@ function hopform_menu() {
  * Implements hook_admin_paths().
  */
 function hopform_admin_paths() {
+  // Use the settings from the node module to determine our admin paths.
   if (variable_get('node_admin_theme')) {
     $paths = array(
       'form/*/edit' => TRUE,
       'form/*/form' => TRUE,
+      'form/*/actions' => TRUE,
+      'form/*/actions/*' => TRUE,
       'form/*/delete' => TRUE,
+      'form/add' => TRUE,
+      'form/add/*' => TRUE,
     );
+
     return $paths;
+  }
+}
+
+function hopform_menu_local_tasks_alter(&$data, $router_item, $root_path) {
+  if ($root_path == 'admin/content/forms') {
+    $item = menu_get_item('form/add');
+    if ($item['access']) {
+      $data['actions']['output'][] = array(
+        '#theme' => 'menu_local_action',
+        '#link' => $item,
+      );
+    }
   }
 }
 
@@ -130,17 +222,31 @@ function hopform_entity_info() {
   return array('hopform_form' => $info);
 }
 
+function hopform_theme() {
+  return array(
+    'hopform_form_add_list' => array(
+      'variables' => array('content' => NULL),
+      'file' => 'hopform.pages.inc',
+    ),
+    'hopform_actions_form_actions' => array(
+      'render element' => 'elements',
+      'file' => 'hopform.pages.inc',
+    ),
+  );
+}
+
+
 /**
  * Get all the available form types.
  */
-function hopform_form_types() {
+function hopform_form_types($reset = FALSE) {
   $types = &drupal_static(__FUNCTION__);
 
-  if (isset($types)) {
+  if (!$reset && isset($types)) {
     return $types;
   }
 
-  if ($cache = cache_get(__FUNCTION__)) {
+  if (!$reset && ($cache = cache_get(__FUNCTION__))) {
     $types = $cache->data;
     return $types;
   }
@@ -169,6 +275,8 @@ function _hopform_form_types() {
     }
   }
 
+  drupal_alter('hopform_form_type_info', $types);
+
   return $types;
 }
 
@@ -192,11 +300,127 @@ function hopform_form_load($fid) {
 function hopform_form_load_multiple($fids) {
   return entity_load('hopform_form', $fids);
 }
-function hopform_form_view_multiple($forms, $view_mode = 'full') {
-  return entity_view('hopform_form', $forms, $view_mode);
+function hopform_form_view_multiple($forms, $view_mode = 'full', $page = NULL) {
+  return entity_view('hopform_form', $forms, $view_mode, NULL, $page);
 }
 function hopform_form_save($form) {
+  if (empty($form->created)) {
+    $form->created = REQUEST_TIME;
+  }
+  $form->changed = REQUEST_TIME;
+
   return entity_save('hopform_form', $form);
+}
+function hopform_form_create(array $values) {
+  global $user;
+
+  return entity_create('hopform_form', $values + array(
+    'uid' => $user->uid,
+    'created' => REQUEST_TIME,
+    'changed' => REQUEST_TIME,
+    'title' => '',
+    'form' => array('#hopform' => TRUE),
+    'status' => 0,
+  ));
+}
+function hopform_form_delete($fid) {
+  return entity_delete('hopform_form', $fid);
+}
+function hopform_form_hopform_form_delete($form) {
+  db_delete('hopform_actions')->condition('fid', $form->fid)->execute();
+}
+
+function hopform_form_actions($form) {
+  $result = db_select('hopform_form_actions', 'a')
+    ->fields('a')
+    ->condition('a.fid', $form->fid)
+    ->orderBy('a.weight', 'ASC')->orderBy('a.aid', 'ASC')
+    ->execute();
+
+  $actions = array();
+  foreach ($result as $action) {
+    $action->settings = unserialize($action->settings);
+    $actions[$action->aid] = $action;
+  }
+
+  return $actions;
+}
+
+function hopform_form_actions_execute($form, &$form_state, $f) {
+  $actions = hopform_form_actions($f);
+  foreach ($actions as $action) {
+    hopform_action_execute($action, $form, $form_state, $f);
+  }
+}
+
+function hopform_action_execute($action, $form, &$form_state, $f) {
+  $actions_info = hopform_actions();
+  $action_info = $actions_info[$action->type];
+
+  if (!empty($action_info['file']) && file_exists($action_info['file'])) {
+    require_once $action_info['file'];
+  }
+
+  if (function_exists($action_info['execute'])) {
+    $callback = $action_info['execute'];
+    $callback($action, $form, $form_state, $f);
+  }
+}
+
+function hopform_form_action_create($form, array $values) {
+  $action = (object) ($values + array(
+    'settings' => array(),
+  ));
+
+  if (empty($action->fid)) {
+    $action->fid = $form->fid;
+  }
+
+  return $action;
+}
+
+function hopform_form_action_load($aid) {
+  $result = db_select('hopform_form_actions', 'a')
+    ->fields('a')
+    ->condition('a.aid', $aid)
+    ->execute();
+
+  foreach ($result as $action) {
+    $action->settings = unserialize($action->settings);
+    return $action;
+  }
+
+  return FALSE;
+}
+
+function hopform_form_action_save($action) {
+  $insert = empty($action->aid);
+
+  if ($insert) {
+    return drupal_write_record('hopform_form_actions', $action);
+  } else {
+    return drupal_write_record('hopform_form_actions', $action, array('aid'));
+  }
+}
+
+function hopform_form_action_delete($aid) {
+  db_delete('hopform_form_actions')->condition('aid', $aid)->execute();
+}
+
+function hopform_form_action_summary($action) {
+  $actions_info = hopform_actions();
+  $action_info = $actions_info[$action->type];
+
+  if (!empty($action_info['file']) && file_exists($action_info['file'])) {
+    require_once $action_info['file'];
+  }
+
+  if (function_exists($action_info['summary'])) {
+    $callback = $action_info['summary'];
+    return $callback($action);
+  }
+
+  return '';
 }
 
 /**
@@ -205,12 +429,29 @@ function hopform_form_save($form) {
 function hopform_form_page_title($form) {
   return $form->title;
 }
+function hopform_form_page_actions_action_title($form, $action) {
+  $actions_info = hopform_actions();
+  $action_info = $actions_info[$action->type];
+
+  return $action_info['label'];
+}
 
 /**
  * Access callback.
  */
 function hopform_form_access($op, $form) {
   return TRUE;
+}
+
+function _hopform_form_add_access() {
+  $types = hopform_form_types();
+  foreach ($types as $type) {
+    if (hopform_form_access('create', $type->type)) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
 }
 
 /**
@@ -286,20 +527,25 @@ function hopform_form_builder_load($form_type, $form_id) {
 }
 
 function hopform_forms($form_id) {
-  if (substr($form_id, 0, strlen(HOPFORM_FORM_PREFIX)) != HOPFORM_FORM_PREFIX) {
-    return;
+  $forms = array();
+
+  if ($types = hopform_form_types()) {
+    foreach (array_keys($types) as $type) {
+      $forms['hopform_form_' . $type . '_form']['callback'] = 'hopform_form_form';
+    }
   }
 
-  $fid = substr($form_id, strlen(HOPFORM_FORM_PREFIX));
-  $form = hopform_form_id_form($fid);
-  if (!$form) { return; }
+  if (substr($form_id, 0, strlen(HOPFORM_FORM_PREFIX)) == HOPFORM_FORM_PREFIX) {
+    $fid = substr($form_id, strlen(HOPFORM_FORM_PREFIX));
+    if ($form = hopform_form_id_form($fid)) {
+      $forms[$form_id] = array(
+        'callback' => 'hopform_form_display_form',
+        'callback arguments' => array($form),
+      );
+    }
+  }
 
-  return array(
-    $form_id => array(
-      'callback' => 'hopform_form_display_form',
-      'callback arguments' => array($form),
-    ),
-  );
+  return $forms;
 }
 
 function hopform_form_display($form) {
@@ -307,11 +553,121 @@ function hopform_form_display($form) {
 }
 
 function hopform_form_display_form($form, &$form_state, $f) {
+  $form_state['hopform_form'] = $f;
+
   if (!empty($f->form)) {
     foreach (element_children($f->form) as $key) if (!empty($f->form[$key])) {
       $form[$key] = $f->form[$key];
     }
   }
 
+  $form['actions'] = array('#type' => 'actions');
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Send'),
+    '#weight' => 5,
+  );
+
   return $form;
+}
+
+function hopform_form_display_form_submit($form, &$form_state) {
+  $f = $form_state['hopform_form'];
+  hopform_form_actions_execute($form, $form_state, $f);
+}
+
+function hopform_actions($reset = FALSE) {
+  $actions = &drupal_static(__FUNCTION__);
+
+  if (!$reset && isset($actions)) {
+    return $actions;
+  }
+
+  if (!$reset && ($cache = cache_get(__FUNCTION__))) {
+    $actions = $cache->data;
+    return $actions;
+  }
+
+  $actions = _hopform_actions();
+  cache_set(__FUNCTION__, $actions);
+  return $actions;
+}
+
+/**
+ * Collect all the available form types. Should not be used directly. Call 
+ * hopform_form_types() instead.
+ */
+function _hopform_actions() {
+  $actions = array();
+  foreach (module_implements('hopform_action_info') as $module) {
+    if (!($result = module_invoke($module, 'hopform_action_info'))) {
+      continue;
+    }
+
+    foreach ($result as $action => $info) {
+      $info['action'] = $action;
+      $info['module'] = $module;
+
+      $defaults = array('file' => drupal_get_path('module', $module) . '/' . $module . '.hopform.inc');
+      foreach (array(
+        'form', 'form_validate', 'form_submit',
+        'execute',
+        'summary',
+      ) as $key) {
+        $defaults[$key] = $module . '_hopform_action_' . $action . '_' . $key;
+      }
+
+      $actions[$action] = array(
+        'action' => $action,
+        'module' => $module,
+      ) + $info + $defaults;
+    }
+  }
+
+  drupal_alter('hopform_action_info', $actions);
+
+  return $actions;
+}
+
+function hopform_action_attach_form($action, &$form, &$form_state) {
+  $actions_info = hopform_actions();
+  $action_info = $actions_info[$action->type];
+
+  if (!empty($action_info['file']) && file_exists($action_info['file'])) {
+    require_once $action_info['file'];
+    $form_state['build_info']['files']['hopform_action'] = $action_info['file'];
+  }
+
+  if (function_exists($action_info['form'])) {
+    $callback = $action_info['form'];
+    $callback($action, $form, $form_state);
+  }
+}
+
+function hopform_action_attach_form_validate($action, $form, &$form_state) {
+  $actions_info = hopform_actions();
+  $action_info = $actions_info[$action->type];
+
+  if (!empty($action_info['file']) && file_exists($action_info['file'])) {
+    require_once $action_info['file'];
+  }
+
+  if (function_exists($action_info['form_validate'])) {
+    $callback = $action_info['form_validate'];
+    $callback($action, $form, $form_state);
+  }
+}
+
+function hopform_action_attach_form_submit($action, $form, &$form_state) {
+  $actions_info = hopform_actions();
+  $action_info = $actions_info[$action->type];
+
+  if (!empty($action_info['file']) && file_exists($action_info['file'])) {
+    require_once $action_info['file'];
+  }
+
+  if (function_exists($action_info['form_submit'])) {
+    $callback = $action_info['form_submit'];
+    $callback($action, $form, $form_state);
+  }
 }
