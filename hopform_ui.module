@@ -39,13 +39,3 @@ function hopform_ui_entity_info_alter(&$info) {
     );
   }
 }
-
-function hopform_ui_hopform_form_type_info() {
-  $info = array();
-
-  $info['form'] = array(
-    'label' => 'Form',
-  );
-
-  return $info;
-}
