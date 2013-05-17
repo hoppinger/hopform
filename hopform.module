@@ -457,7 +457,7 @@ function hopform_form_access($op, $form, $account = NULL) {
 
   if (!$account) { $account = $user; }
 
-  return user_access('adminster hopform', $account);
+  return user_access('administer hopform', $account);
 }
 
 function _hopform_form_add_access() {
