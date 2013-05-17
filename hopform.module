@@ -2,6 +2,15 @@
 
 define('HOPFORM_FORM_PREFIX', 'hopform_form_display_');
 
+function hopform_permission() {
+  return array(
+    'administer hopform' =>  array(
+      'title' => t('Administer forms'),
+      'description' => t('Edit and manage all forms.'),
+    ),
+  );
+}
+
 /**
  * Implements hook_hook_info().
  */
@@ -439,8 +448,16 @@ function hopform_form_page_actions_action_title($form, $action) {
 /**
  * Access callback.
  */
-function hopform_form_access($op, $form) {
-  return TRUE;
+function hopform_form_access($op, $form, $account = NULL) {
+  global $user;
+
+  if ($op == 'view') {
+    return TRUE;
+  }
+
+  if (!$account) { $account = $user; }
+
+  return user_access('adminster hopform', $account);
 }
 
 function _hopform_form_add_access() {
