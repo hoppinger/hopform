@@ -42,7 +42,20 @@ function hopform_hopform_action_email_form($action, &$form, &$form_state) {
       'effect' => 'fade',
     ),
   );
-}
+
+  $form['from'] = array(
+    '#type' => 'textfield',
+    '#title' => t('From address'),
+    '#default_value' => !empty($action->settings['from']) ? $action->settings['from'] : '',
+    '#element_validate' => array('_hopform_hopform_action_email_element_validate'),
+    '#required' => TRUE,
+  );
+  $form['subject'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Subject'),
+    '#default_value' => !empty($action->settings['subject']) ? $action->settings['subject'] : '',
+    '#required' => TRUE,
+  );}
 
 function hopform_hopform_action_email_form_more_submit($form, &$form_state) {
   _hopform_hopform_action_email_form_submit_cleanup($form_state);
@@ -58,6 +71,8 @@ function hopform_hopform_action_email_form_more_submit($form, &$form_state) {
 function hopform_hopform_action_email_form_submit($action, $form, &$form_state) {
   _hopform_hopform_action_email_form_submit_cleanup($form_state);
   $action->settings['addresses'] = $form_state['addresses'];
+  $action->settings['from'] = $form_state['values']['from'];
+  $action->settings['subject'] = $form_state['values']['subject'];
 }
 
 function _hopform_hopform_action_email_form_submit_cleanup(&$form_state) {
@@ -94,14 +109,29 @@ function _hopform_hopform_action_email_element_validate($element, &$form_state) 
 function hopform_hopform_action_email_summary($action) {
   $addresses = !empty($action->settings['addresses']) ? array_values($action->settings['addresses']) : array();
 
-  return t('To !addresses', array('!addresses' => '<em>' . implode('</em>, <em>', array_map('check_plain', $addresses)) . '</em>'));
+  return t('<ul><li>To !addresses</li><li>From %from</li><li>Subject: %subject</li></ul>', array(
+    '!addresses' => '<em>' . implode('</em>, <em>', array_map('check_plain', $addresses)) . '</em>',
+    '%from' => $action->settings['from'],
+    '%subject' => $action->settings['subject'],
+  ));
 }
 
 function hopform_hopform_action_email_execute($action, $form, &$form_state, $f) {
+  $language = $GLOBALS['language'];
+
   $result = _hopform_hopform_action_email_construct_children($f->form, $form_state);
   $text   = _hopform_hopform_action_email_construct_text($result);
-  
-  
+  $text   = implode("\n", $text);
+  dsm($text);
+
+  if (!empty($action->settings) && !empty($action->settings['addresses'])) {
+    foreach ($action->settings['addresses'] as $address) {
+      drupal_mail('hopform', 'action_email', $address, $language, array(
+        'text' => $text,
+        'action' => $action,
+      ), $action->settings['from']);
+    }
+  }
 }
 
 function _hopform_hopform_action_email_construct_children($elements, &$form_state) {

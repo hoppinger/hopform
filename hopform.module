@@ -688,3 +688,18 @@ function hopform_action_attach_form_submit($action, $form, &$form_state) {
     $callback($action, $form, $form_state);
   }
 }
+
+function hopform_mail($key, &$message, $params) {
+  $mail_callback = 'hopform_' . $key . '_mail';
+  if (function_exists($mail_callback)) {
+    $mail_callback($message, $params);
+  }
+}
+
+function hopform_action_email_mail(&$message, $params) {
+  $text = $params['text'];
+  $html = str_replace(array(" ", "\n"), array("&nbsp;", "<br />"), $text);
+
+  $message['subject'] = $params['action']->settings['subject'];
+  $message['body'] = array($html);
+}
