@@ -100,7 +100,8 @@ function hopform_hopform_action_email_summary($action) {
 function hopform_hopform_action_email_execute($action, $form, &$form_state, $f) {
   $result = _hopform_hopform_action_email_construct_children($f->form, $form_state);
   $text   = _hopform_hopform_action_email_construct_text($result);
-  // dsm($text);
+  
+  
 }
 
 function _hopform_hopform_action_email_construct_children($elements, &$form_state) {
@@ -127,10 +128,55 @@ function _hopform_hopform_action_email_construct_children($elements, &$form_stat
   return $result;
 }
 
-function _hopform_hopform_action_email_construct_text($info, $prefix = '', $width = 80) {
+function _hopform_hopform_action_email_construct_text($info, $prefix = 0, $width = 80) {
   $text = array();
 
   foreach ($info as $key => $_info) {
+    if (!empty($_info['label'])) {
+      $text[] = $_info['label'] . ':';
+    }
+    if (!empty($_info['value'])) {
+      if (is_array($_info['value'])) {
+        foreach ($_info['value'] as $row) {
+          $text = array_merge($text, _hopform_hopform_action_email_format_text($row, $width));
+        }
+      } else {
+        $text = array_merge($text, _hopform_hopform_action_email_format_text($_info['value'], $width));
+      }
+    }
+    if (!empty($_info['children'])) {
+      $text = array_merge($text, _hopform_hopform_action_email_construct_text($_info['children'], $prefix + 2, $width - 2));
+    }
 
+    if (!count($text) || $text[count($text)-1] != '') {
+      $text[] = '';
+    }
   }
+
+  if ($prefix) {
+    $p = str_repeat(' ', $prefix);
+    foreach ($text as $key => $value) {
+      $text[$key] = $value ? ($p . $value) : '';
+    }
+  }
+
+  return $text;
 }
+
+function _hopform_hopform_action_email_format_text($text, $width) {
+  $chunks = explode("\n", $text);
+
+  $result = array();
+  foreach ($chunks as $chunk) {
+    if (strlen($chunk) <= $width) {
+      $result[] = $chunk;
+    }
+    else {
+      $wrapped = wordwrap($chunk, $width);
+      $result += _hopform_hopform_action_email_format_text($wrapped, $width);
+    }
+  }
+
+  return $result;
+}
+
