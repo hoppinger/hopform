@@ -55,7 +55,16 @@ function hopform_hopform_action_email_form($action, &$form, &$form_state) {
     '#title' => t('Subject'),
     '#default_value' => !empty($action->settings['subject']) ? $action->settings['subject'] : '',
     '#required' => TRUE,
-  );}
+  );
+
+  $form['intro'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Introduction'),
+    '#default_value' => !empty($action->settings['intro']) ? $action->settings['intro'] : '',
+    '#description' => t('This text will be displayed at the top of the e-mail.'),
+  );
+
+}
 
 function hopform_hopform_action_email_form_more_submit($form, &$form_state) {
   _hopform_hopform_action_email_form_submit_cleanup($form_state);
@@ -73,6 +82,7 @@ function hopform_hopform_action_email_form_submit($action, $form, &$form_state) 
   $action->settings['addresses'] = $form_state['addresses'];
   $action->settings['from'] = $form_state['values']['from'];
   $action->settings['subject'] = $form_state['values']['subject'];
+  $action->settings['intro'] = $form_state['values']['intro'];
 }
 
 function _hopform_hopform_action_email_form_submit_cleanup(&$form_state) {
@@ -123,11 +133,15 @@ function hopform_hopform_action_email_execute($action, $form, &$form_state, $f) 
   $text   = _hopform_hopform_action_email_construct_text($result);
   $text   = implode("\n", $text);
 
+  $intro  = _hopform_hopform_action_email_format_text(!empty($action->settings['intro']) ? $action->settings['intro'] : '');
+  $intro = implode("\n", $intro);
+
   if (!empty($action->settings) && !empty($action->settings['addresses'])) {
     foreach ($action->settings['addresses'] as $address) {
       drupal_mail('hopform', 'action_email', $address, $language, array(
         'text' => $text,
         'action' => $action,
+        'intro' => $intro,
       ), $action->settings['from']);
     }
   }
@@ -192,7 +206,7 @@ function _hopform_hopform_action_email_construct_text($info, $prefix = 0, $width
   return $text;
 }
 
-function _hopform_hopform_action_email_format_text($text, $width) {
+function _hopform_hopform_action_email_format_text($text, $width = 80) {
   $chunks = explode("\n", $text);
 
   $result = array();

@@ -697,9 +697,11 @@ function hopform_mail($key, &$message, $params) {
 }
 
 function hopform_action_email_mail(&$message, $params) {
-  $text = $params['text'];
-  $html = str_replace(array(" ", "\n"), array("&nbsp;", "<br />"), $text);
-
   $message['subject'] = $params['action']->settings['subject'];
-  $message['body'] = array($html);
+
+  $message['body'] = array();
+  if (!empty($params['intro'])) {
+    $message['body'][] = "<p>" . str_replace(array(" ", "\n"), array("&nbsp;", "<br />"), $params['intro']) . "</p>";
+  }
+  $message['body'][] = "<p>" . str_replace(array(" ", "\n"), array("&nbsp;", "<br />"), $params['text']) . "</p>";
 }
