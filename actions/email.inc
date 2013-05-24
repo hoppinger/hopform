@@ -122,7 +122,6 @@ function hopform_hopform_action_email_execute($action, $form, &$form_state, $f) 
   $result = _hopform_hopform_action_email_construct_children($f->form, $form_state);
   $text   = _hopform_hopform_action_email_construct_text($result);
   $text   = implode("\n", $text);
-  dsm($text);
 
   if (!empty($action->settings) && !empty($action->settings['addresses'])) {
     foreach ($action->settings['addresses'] as $address) {
