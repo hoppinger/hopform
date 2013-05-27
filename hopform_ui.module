@@ -31,7 +31,7 @@ function hopform_ui_menu() {
 
 function hopform_ui_entity_info_alter(&$info) {
   foreach ($info['hopform_form']['bundles'] as $type => $type_info) {
-    $info['hopform']['bundles'][$type]['admin'] = array(
+    $info['hopform_form']['bundles'][$type]['admin'] = array(
       'path' => 'admin/structure/hopform/%hopform_form_type',
       'real path' => 'admin/structure/hopform/' . str_replace('_', '-', $type),
       'bundle argument' => 3,
