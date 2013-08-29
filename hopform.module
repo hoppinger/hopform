@@ -335,8 +335,36 @@ function hopform_form_create(array $values) {
 function hopform_form_delete($fid) {
   return entity_delete('hopform_form', $fid);
 }
-function hopform_form_hopform_form_delete($form) {
+function hopform_hopform_form_delete($form) {
   db_delete('hopform_actions')->condition('fid', $form->fid)->execute();
+}
+function hopform_hopform_form_insert($form) {
+  hopform_form_save_path($form);
+}
+function hopform_hopform_form_update($form) {
+  if (isset($form->path)) {
+    $path = $form->path;
+    $path['alias'] = trim($path['alias']);
+    // Delete old alias if user erased it.
+    if (!empty($path['pid']) && empty($path['alias'])) {
+      path_delete($path['pid']);
+    }
+    hopform_form_save_path($form);
+  }
+}
+
+function hopform_form_save_path($form) {
+  if (isset($form->path)) {
+    $path = $form->path;
+    $path['alias'] = trim($path['alias']);
+    // Only save a non-empty alias.
+    if (!empty($path['alias'])) {
+      // Ensure fields for programmatic executions.
+      $path['source'] = 'form/' . $form->fid;
+      $path['language'] =  LANGUAGE_NONE;
+      path_save($path);
+    }
+  }
 }
 
 function hopform_form_actions($form) {

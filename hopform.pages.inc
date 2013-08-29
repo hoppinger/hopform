@@ -80,13 +80,58 @@ function hopform_form_form($form, &$form_state, $f) {
     '#attached' => array(
       'js' => array(drupal_get_path('module', 'hopform') . '/hopform.js'),
     ),
-    '#weight' => 95,
+    '#weight' => 0,
   );
   $form['options']['status'] = array(
     '#type' => 'checkbox',
     '#title' => t('Published'),
     '#default_value' => $f->status,
   );
+
+  if (module_exists('path')) {
+    $path = array();
+    if (!empty($form_state['hopform_form']->fid)) {
+      $conditions = array('source' => 'form/' . $form_state['hopform_form']->fid);
+      $path = path_load($conditions);
+      if ($path === FALSE) {
+        $path = array();
+      }
+    }
+    $path += array(
+      'pid' => NULL,
+      'source' => isset($form_state['hopform_form']->fid) ? 'form/' . $form_state['hopform_form']->fid : NULL,
+      'alias' => '',
+      'language' => LANGUAGE_NONE,
+    );
+
+    $form['path'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('URL path settings'),
+      '#collapsible' => TRUE,
+      '#collapsed' => empty($path['alias']),
+      '#group' => 'additional_settings',
+      '#attributes' => array(
+        'class' => array('path-form'),
+      ),
+      '#attached' => array(
+        'js' => array(drupal_get_path('module', 'path') . '/path.js'),
+      ),
+      '#access' => user_access('create url aliases') || user_access('administer url aliases'),
+      '#weight' => 30,
+      '#tree' => TRUE,
+      '#element_validate' => array('path_form_element_validate'),
+    );
+    $form['path']['alias'] = array(
+      '#type' => 'textfield',
+      '#title' => t('URL alias'),
+      '#default_value' => $path['alias'],
+      '#maxlength' => 255,
+      '#description' => t('Optionally specify an alternative URL by which this form can be accessed. Use a relative path and don\'t add a trailing slash or the URL alias won\'t work.'),
+    );
+    $form['path']['pid'] = array('#type' => 'value', '#value' => $path['pid']);
+    $form['path']['source'] = array('#type' => 'value', '#value' => $path['source']);
+    $form['path']['language'] = array('#type' => 'value', '#value' => $path['language']);
+  }
 
   // Add the buttons.
   $form['actions'] = array('#type' => 'actions');
@@ -129,6 +174,9 @@ function hopform_form_form_submit($form, &$form_state) {
   // Fill the entity with the submitted values.
   $f->title = $form_state['values']['title'];
   $f->status = $form_state['values']['status'];
+  if (module_exists('path')) {
+    $f->path = $form_state['values']['path'];
+  }
   field_attach_submit('hopform_form', $f, $form, $form_state);
 
   // Save the entity;
