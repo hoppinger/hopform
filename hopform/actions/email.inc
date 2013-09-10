@@ -129,7 +129,7 @@ function hopform_hopform_action_email_summary($action) {
 function hopform_hopform_action_email_execute($action, $form, &$form_state, $f) {
   $language = $GLOBALS['language'];
 
-  $result = _hopform_hopform_action_email_construct_children($f->form, $form_state);
+  $result = hopform_form_build_values($f->form, $form_state);
   $text   = _hopform_hopform_action_email_construct_text($result);
   $text   = implode("\n", $text);
 
@@ -145,30 +145,6 @@ function hopform_hopform_action_email_execute($action, $form, &$form_state, $f) 
       ), $action->settings['from']);
     }
   }
-}
-
-function _hopform_hopform_action_email_construct_children($elements, &$form_state) {
-  $elements_info = hopform_elements();
-
-  $result = array();
-  foreach (element_children($elements) as $key) {
-    $element = $elements[$key];
-    if (empty($element['#form_builder']['element_type']) || empty($elements_info[$element['#form_builder']['element_type']])) {
-      continue;
-    }
-
-    $element_info = $elements_info[$element['#form_builder']['element_type']];
-    $result[$key] = array('label' => $element['#title']);
-    if (!empty($form_state['values'][$key]) && !empty($element_info['show_callback'])) {
-      $result[$key]['value'] = $element_info['show_callback']($element, $form_state['values'][$key]);
-    }
-
-    if (element_children($element)) {
-      $result[$key]['children'] = _hopform_hopform_action_email_construct_children($element, $form_state);
-    }
-  }
-
-  return $result;
 }
 
 function _hopform_hopform_action_email_construct_text($info, $prefix = 0, $width = 80) {

@@ -1,0 +1,56 @@
+<?php
+
+function hopform_entries_schema() {
+  $schema = array();
+
+  $schema['hopform_form_entries'] = array(
+    'fields' => array(
+      'feid' => array(
+        'description' => 'The primary identifier for a form entry.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'fid' => array(
+        'description' => 'The primary identifier of a form.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'created' => array(
+        'description' => 'The Unix timestamp when the form entry was created.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'hostname' => array(
+        'type' => 'varchar',
+        'length' => 128,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => "The creator's host name.",
+      ),
+      'data' => array(
+        'type' => 'blob',
+        'not null' => FALSE,
+        'size' => 'big',
+        'serialize' => TRUE,
+        'description' => 'A form API array',
+      ),
+    ),
+    'indexes' => array(
+      'fid' => array('fid'),
+    ),
+    'foreign keys' => array(
+      'form' => array(
+        'table' => 'hopform_form',
+        'columns' => array('fid' => 'fid'),
+      ),
+    ),
+    'primary key' => array('feid'),
+  );
+
+  return $schema;
+}
+

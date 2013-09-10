@@ -2,11 +2,21 @@
 
 define('HOPFORM_FORM_PREFIX', 'hopform_form_display_');
 
+define('HOPFORM_FORM_ACCESS_ALLOW', 'allow');
+define('HOPFORM_FORM_ACCESS_DENY', 'deny');
+define('HOPFORM_FORM_ACCESS_IGNORE', NULL);
+
 function hopform_permission() {
   return array(
+    'bypass hopform_form access' => array(
+      'title' => t('Bypass hopform access control'),
+      'description' => t('View, edit and delete all forms regardless of permission restrictions.'),
+      'restrict access' => TRUE,
+    ),
     'administer hopform' =>  array(
       'title' => t('Administer forms'),
       'description' => t('Edit and manage all forms.'),
+      'restrict access' => TRUE,
     ),
   );
 }
@@ -479,11 +489,26 @@ function hopform_form_page_actions_action_title($form, $action) {
 function hopform_form_access($op, $form, $account = NULL) {
   global $user;
 
-  if ($op == 'view') {
+  if (!$account) { $account = $user; }
+
+  if (user_access('bypass hopform_form access', $account)) {
     return TRUE;
   }
 
-  if (!$account) { $account = $user; }
+  // Allow other modules to override the default behavior
+  $access = module_invoke_all('hopform_form_access', $form, $op, $account);
+  if (in_array(HOPFORM_FORM_ACCESS_DENY, $access, TRUE)) {
+    return FALSE;
+  }
+  elseif (in_array(HOPFORM_FORM_ACCESS_ALLOW, $access, TRUE)) {
+    return TRUE;
+  }
+
+  // Default behavior: viewing published forms is always allowed. All other
+  // actions require 'administer hopform'.
+  if ($op == 'view') {
+    return $form->status == 1;
+  }
 
   return user_access('administer hopform', $account);
 }
@@ -686,6 +711,10 @@ function hopform_action_attach_form($action, &$form, &$form_state) {
   if (function_exists($action_info['form'])) {
     $callback = $action_info['form'];
     $callback($action, $form, $form_state);
+  } else {
+    $form['help'] = array(
+      '#markup' => '<p>' . t("This action does not have any settings.") . '</p>',
+    );
   }
 }
 
@@ -732,4 +761,28 @@ function hopform_action_email_mail(&$message, $params) {
     $message['body'][] = "<p>" . str_replace(array(" ", "\n"), array("&nbsp;", "<br />"), $params['intro']) . "</p>";
   }
   $message['body'][] = "<p>" . str_replace(array(" ", "\n"), array("&nbsp;", "<br />"), $params['text']) . "</p>";
+}
+
+function hopform_form_build_values($elements, &$form_state) {
+  $elements_info = hopform_elements();
+
+  $result = array();
+  foreach (element_children($elements, TRUE) as $key) {
+    $element = $elements[$key];
+    if (empty($element['#form_builder']['element_type']) || empty($elements_info[$element['#form_builder']['element_type']])) {
+      continue;
+    }
+
+    $element_info = $elements_info[$element['#form_builder']['element_type']];
+    $result[$key] = array('label' => $element['#title']);
+    if (!empty($form_state['values'][$key]) && !empty($element_info['show_callback'])) {
+      $result[$key]['value'] = $element_info['show_callback']($element, $form_state['values'][$key]);
+    }
+
+    if (element_children($element)) {
+      $result[$key]['children'] = hopform_form_build_values($element, $form_state);
+    }
+  }
+
+  return $result;
 }

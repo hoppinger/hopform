@@ -1,0 +1,328 @@
+<?php
+
+function hopform_entries_menu() {
+  $items = array();
+
+  $items['form/%hopform_form/entries'] = array(
+    'title' => 'Entries',
+    'page callback' => 'hopform_form_page_entries',
+    'page arguments' => array(1),
+    'access callback' => 'hopform_form_entries_access',
+    'access arguments' => array(1),
+    'weight' => 0,
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+    'file' => 'hopform_entries.pages.inc',
+  );
+
+  $items['form/%hopform_form/entries/%hopform_form_entry'] = array(
+    'title' => 'Entries',
+    'page callback' => 'hopform_form_page_entry',
+    'page arguments' => array(1, 3),
+    'access callback' => 'hopform_form_entries_access',
+    'access arguments' => array(1),
+    'weight' => 0,
+    'file' => 'hopform_entries.pages.inc',
+    'type' => MENU_LOCAL_TASK, // This keep the 'entries' tab visible and active
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_admin_paths().
+ */
+function hopform_entries_admin_paths() {
+  // Use the settings from the node module to determine our admin paths.
+  if (variable_get('node_admin_theme')) {
+    $paths = array(
+      'form/*/entries' => TRUE,
+      'form/*/entries/*' => TRUE,
+    );
+
+    return $paths;
+  }
+}
+
+function hopform_form_entries_access($form) {
+  $actions = hopform_form_actions($form);
+
+  foreach ($actions as $action) {
+    if ($action->type == 'save') {
+      return hopform_form_access('entries_view', $form);
+    }
+  }
+
+  return FALSE;
+}
+
+function hopform_form_entry_new($form) {
+  $entry = (object) array(
+    'fid' => $form->fid,
+    'created' => REQUEST_TIME,
+    'hostname' => ip_address(),
+    'is_new' => TRUE,
+  );
+
+  return $entry;
+}
+
+function hopform_form_entry_save($entry) {
+  $entry->is_new = !empty($entry->is_new) || empty($entry->feid);
+
+  if (empty($entry->created)) {
+    $entry->created = REQUEST_TIME;
+  }
+  if (empty($entry->hostname)) {
+    $entry->hostname = ip_address();
+  }
+
+  if ($entry->is_new) {
+    $return = drupal_write_record('hopform_form_entries', $entry);
+  } else {
+    $return = drupal_write_record('hopform_form_entries', $entry, $entry->feid);
+  }
+
+  return $return;
+}
+
+function hopform_form_entry_load($feid) {
+  $entry = db_select('hopform_form_entries', 'e')
+    ->fields('e')
+    ->condition('e.feid', $feid)
+    ->range(0,1)
+    ->execute()
+    ->fetchObject();
+
+  if (!$entry) {
+    return FALSE;
+  }
+
+  if (!empty($entry->data)) {
+    $entry->data = unserialize($entry->data);
+  }
+
+  return $entry;
+}
+
+function hopform_form_entry_view($entry) {
+  $form = hopform_form_load($entry->fid);
+
+  $build = array(
+    '#theme' => 'hopform_form_entry',
+    '#entry' => $entry,
+    '#form' => $form,
+    'data' => hopform_form_entry_build_data_content($entry->data),
+  );
+
+  return $build;
+}
+
+function hopform_entries_theme() {
+  return array(
+    'hopform_form_entry' => array(
+      'template' => 'hopform-form-entry',
+      'render element' => 'elements',
+    ),
+    'hopform_form_entry_data' => array(
+      'template' => 'hopform-form-entry-data',
+      'render element' => 'elements',
+    ),
+  );
+}
+
+function template_preprocess_hopform_form_entry(&$variables) {
+  $variables['form'] = $variables['elements']['#form'];
+  $variables['entry'] = $variables['elements']['#entry'];
+
+  $variables += array('content' => array());
+  foreach (element_children($variables['elements']) as $key) {
+    $variables['content'][$key] = $variables['elements'][$key];
+  }
+}
+
+function hopform_form_entry_build_data_content($data) {
+  $build = array();
+
+  foreach ($data as $key => $info) {
+    $build[$key] = array(
+      '#theme_wrappers' => array('hopform_form_entry_data'),
+    );
+
+    if (!empty($info['label'])) {
+      $build[$key]['#label'] = $info['label'];
+    }
+    if (!empty($info['value'])) {
+      $build[$key]['#value'] = $info['value'];
+    }
+
+    if (!empty($info['children'])) {
+      $build[$key] += hopform_form_entry_build_data_content($info['children']);
+    }
+  }
+
+  return $build;
+}
+
+function hopform_form_construct_table($form) {
+  $_headers = _hopform_form_construct_table_headers($form->form);
+  $_rows = array();
+
+  $entries = db_select('hopform_form_entries', 'e')
+    ->fields('e')
+    ->condition('e.fid', $form->fid)
+    ->orderBy('e.created', 'DESC')
+    ->execute()
+    ->fetchAll();
+  foreach ($entries as $entry) {
+    if (empty($entry->data)) {
+      continue;
+    }
+    
+    $entry->data = unserialize($entry->data);
+
+    $_rows[] = array('entry' => $entry, 'data' => _hopform_form_construct_table_entry($entry->data, $_headers));
+  }
+
+  $headers = array(
+    'hostname' => t('Hostname'),
+    'created' => t('Created'),
+  );
+  foreach ($_headers as $key => $title) {
+    foreach ($_rows as $_row) {
+      if (isset($_row['data'][$key])) {
+        $headers['data-' . $key] = $title;
+        continue;
+      }
+    }
+  }
+
+  $rows = array();
+  foreach ($_rows as $_row) {
+    $row = array(
+      'hostname' => $_row['entry']->hostname,
+      'created' => format_date($_row['entry']->created, 'custom', 'Y-m-d H:i:s')
+    );
+
+    foreach ($_row['data'] as $key => $value) {
+      $row['data-' . $key] = $value;
+    }
+
+    $rows[] = $row;
+  }
+
+  return array(
+    'headers' => $headers,
+    'rows' => $rows,
+  );
+}
+
+function _hopform_form_construct_table_headers($elements) {
+  $headers = array();
+
+  foreach (element_children($elements, TRUE) as $key) {
+    $element = $elements[$key];
+    if (empty($element['#title'])) {
+      continue;
+    }
+
+    $headers[$key] = $element['#title'];
+    if (element_children($element)) {
+      $children = _hopform_form_construct_table_headers($element);
+      foreach ($children as $ckey => $ctitle) {
+        $headers[$key . '-' . $ckey] = $headers[$key] . ': ' . $ctitle;
+      }
+    }
+  }
+
+  return $headers;
+}
+
+function _hopform_form_construct_table_entry($values, &$headers, $parent = array('title' => '', 'key' => '')) {
+  $row = array();
+
+  foreach ($values as $k => $value) {
+    $key = !empty($parent['key']) ? ($parent['key'] . '-' . $k) : $k;
+    $title = !empty($value['label']) ? (!empty($parent['title']) ? ($parent['title'] . ': ' . $value['label']) : $value['label']) : '';
+
+    if (isset($value['value'])) {
+      $row[$key] = $value['value'];
+      if (!isset($headers[$key])) {
+        $headers[$key] = $title;
+      }
+    }
+
+    if (isset($value['children'])) {
+      $row = array_merge($row, _hopform_form_construct_table_entry($value['children'], $headers, array('title' => $title, 'key' => $key)));
+    }
+  }
+
+  return $row;
+}
+
+function hopform_entries_export($form, &$form_state, $f) {
+  $form_state['hopform_form'] = $f;
+
+  $form['export_wrapper'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Export'),
+    '#description' => t('Export the form entries to a CSV file.'),
+  );
+
+  $form['export_wrapper']['actions'] = array('#type' => 'actions');
+
+  $form['export_wrapper']['actions']['export'] = array(
+    '#type' => 'submit',
+    '#value' => t('Export'),
+  );
+
+  return $form;
+}
+
+function hopform_entries_export_submit($form, &$form_state) {
+  $table = hopform_form_construct_table($form_state['hopform_form']);
+
+  $result = array(array_values($table['headers']));
+  foreach ($table['rows'] as $_row) {
+    $row = array();
+    foreach ($table['headers'] as $key => $title) {
+      $row[] = !empty($_row[$key]) ? $_row[$key] : '';
+    }
+
+    $result[] = $row;
+  }
+
+  $file = 'private://hopform_form_export_' . $form_state['hopform_form']->fid . '_' . md5(strval(microtime())) . '.csv';
+  $temp_file = drupal_tempnam('temporary://', 'hopform_form_export_');
+
+  $fp = fopen($temp_file, 'w');
+  foreach ($result as $fields) {
+    fputcsv($fp, $fields);
+  }
+  fclose($fp);
+
+  $source = (object) array(
+    'uri' => $temp_file,
+    'filemime' => 'text/csv',
+  );
+  file_move($source, $file);
+
+  drupal_set_message(t('The CSV file that contains the exported form entries is generated. You can download it <a href="!link">here</a>. This link will be valid for @interval.', array('!link' => file_create_url($file), '@interval' => format_interval(DRUPAL_MAXIMUM_TEMP_FILE_AGE))));
+}
+
+function hopform_entries_file_download($uri) {
+  if (preg_match('/^private:\/\/hopform_form_export_([0-9]+)_[0-9a-f]{32}\.csv$/', $uri, $matches)) {
+    $form = hopform_form_load($matches[1]);
+    if (!$form) {
+      return -1;
+    }
+
+    if (!hopform_form_access('entries_view', $form)) {
+      return -1;
+    }
+
+    return array(
+      'Content-Disposition' => 'attachment; filename="hopform_form_export_' . $form->fid . '.csv"'
+    );
+  }
+}

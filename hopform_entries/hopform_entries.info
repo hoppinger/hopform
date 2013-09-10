@@ -1,0 +1,4 @@
+name = HopForm Entries
+core = 7.x
+
+dependencies[] = hopform

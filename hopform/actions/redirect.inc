@@ -16,7 +16,7 @@ function hopform_hopform_action_redirect_form_submit($action, $form, &$form_stat
 
 function hopform_hopform_action_redirect_summary($action) {
   if (empty($action->settings['path']) || $action->settings['path'] == '<front>') {
-    return t('Redirec to frontpage');
+    return t('Redirect to frontpage');
   }
 
   return t('Redirect to %path', array('%path' => drupal_get_path_alias($action->settings['path'])));
