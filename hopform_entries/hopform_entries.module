@@ -153,7 +153,11 @@ function hopform_form_entry_build_data_content($data) {
       $build[$key]['#label'] = $info['label'];
     }
     if (!empty($info['value'])) {
-      $build[$key]['#value'] = $info['value'];
+      if (is_array($info['value'])) {
+        $build[$key]['#value'] = implode(', ', $info['value']);
+      } else {
+        $build[$key]['#value'] = $info['value'];
+      }
     }
 
     if (!empty($info['children'])) {
@@ -246,7 +250,12 @@ function _hopform_form_construct_table_entry($values, &$headers, $parent = array
     $title = !empty($value['label']) ? (!empty($parent['title']) ? ($parent['title'] . ': ' . $value['label']) : $value['label']) : '';
 
     if (isset($value['value'])) {
-      $row[$key] = $value['value'];
+      if (is_array($value['value'])) {
+        $row[$key] = implode(', ', $value['value']);
+      } else {
+        $row[$key] = $value['value'];
+      }
+      
       if (!isset($headers[$key])) {
         $headers[$key] = $title;
       }
