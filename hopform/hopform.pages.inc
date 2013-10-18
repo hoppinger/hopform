@@ -181,6 +181,7 @@ function hopform_form_form_submit($form, &$form_state) {
 
   // Save the entity;
   hopform_form_save($f);
+  cache_clear_all();
 
   if ($f->fid) {
     $t_args = array('@type' => $types[$f->type]->label, '%title' => $f->title);
@@ -265,6 +266,7 @@ function hopform_save_form_submit($form, &$form_state) {
   $f->form = $form_cache;
 
   hopform_form_save($f);
+  cache_clear_all();
 
   form_builder_cache_delete('hopform_' . $f->type, hopform_form_form_id($f));
 
