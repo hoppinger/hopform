@@ -171,13 +171,7 @@ function hopform_form_form_submit($form, &$form_state) {
   $f = $form_state['hopform_form'];
   $insert = empty($f->fid);
 
-  // Fill the entity with the submitted values.
-  $f->title = $form_state['values']['title'];
-  $f->status = $form_state['values']['status'];
-  if (module_exists('path')) {
-    $f->path = $form_state['values']['path'];
-  }
-  field_attach_submit('hopform_form', $f, $form, $form_state);
+  entity_form_submit_build_entity('hopform_form', $f, $form, $form_state);
 
   // Save the entity;
   hopform_form_save($f);

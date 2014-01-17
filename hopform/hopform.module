@@ -214,6 +214,7 @@ function hopform_entity_info() {
     'label' => t('Form'),
     'controller class' => 'EntityAPIController',
     'base table' => 'hopform_form',
+    'uri callback' => 'hopform_form_uri',
     'fieldable' => TRUE,
     'entity keys' => array(
       'id' => 'fid',
@@ -230,6 +231,9 @@ function hopform_entity_info() {
         'custom settings' => FALSE,
       ),
     ),
+
+    'path' => 'form/%hopform_form',
+    'metatags' => TRUE,
   );
 
   foreach (hopform_form_types() as $type => $type_info) {
@@ -312,6 +316,11 @@ function hopform_form_type_load($name) {
 /**
  * hopform_form crud callbacks.
  */
+function hopform_form_uri($form) {
+  return array(
+    'path' => 'form/' . $form->fid,
+  );
+}
 function hopform_form_load($fid) {
   $forms = hopform_form_load_multiple(array($fid));
   return $forms ? reset($forms) : FALSE;
