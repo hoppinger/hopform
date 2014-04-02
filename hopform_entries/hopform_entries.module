@@ -16,7 +16,7 @@ function hopform_entries_menu() {
   );
 
   $items['form/%hopform_form/entries/%hopform_form_entry'] = array(
-    'title' => 'Entries',
+    'title' => 'Entry',
     'page callback' => 'hopform_form_page_entry',
     'page arguments' => array(1, 3),
     'access callback' => 'hopform_form_entries_access',
@@ -24,6 +24,15 @@ function hopform_entries_menu() {
     'weight' => 0,
     'file' => 'hopform_entries.pages.inc',
     'type' => MENU_LOCAL_TASK, // This keep the 'entries' tab visible and active
+  );
+
+  $items['form/%hopform_form/entries/%hopform_form_entry/delete'] = array(
+    'title' => t('Delete Entry'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('hopform_delete_confirm', 1, 3),
+    'access callback' => 'hopform_form_entries_access',
+    'access arguments' => array(1),
+    'type' => MENU_CALLBACK,
   );
 
   return $items;
@@ -334,4 +343,31 @@ function hopform_entries_file_download($uri) {
       'Content-Disposition' => 'attachment; filename="hopform_form_export_' . $form->fid . '.csv"'
     );
   }
+}
+
+function hopform_delete_confirm($form, &$form_state, $f, $entry){
+  $form['#hopform_form'] = $f;
+  $form['#entry'] = $entry;
+
+  return confirm_form($form,
+      t('Are you sure you want to delete this entry?'),
+      "/form/{$f->fid}/entries",
+      t('This action cannot be undone.'),
+      t('Delete'),
+      t('Cancel'));
+}
+
+function hopform_delete_confirm_submit($form, &$form_state) {
+  $f = $form['#hopform_form'];
+  $entry = $form['#entry'];
+
+  if ($form_state['values']['confirm']) {
+    $delete = db_delete('hopform_form_entries')
+    ->condition('feid', $entry->feid)
+    ->execute();
+
+    drupal_set_message(t('The entry has been deleted successfully.'));
+  }
+
+  $form_state['redirect'] = "form/{$f->fid}/entries";
 }
