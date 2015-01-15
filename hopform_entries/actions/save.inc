@@ -64,7 +64,7 @@ function hopform_entries_hopform_action_save_form($action, &$form, &$form_state)
   $form['ftp_filename'] = array(
     '#type' => 'textfield',
     '#title' => t('File name'),
-    '#description' => t('Filename where results will be saved.'),
+    '#description' => t('The prefix of the filename that is uploaded to the ftp server.'),
     '#states' => array(
       'invisible' => array(
          ':input[name="ftp_upload_required"]' => array('checked' => FALSE),
@@ -121,6 +121,23 @@ function hopform_entries_hopform_action_save_form_validate($action, $form, &$for
       form_set_error('ftp_port', t('Port number is not a valid value.'));
       $flag = TRUE;
     }
+
+    if(empty($form_state['values']['ftp_remote_dir'])) {
+      form_set_error('ftp_remote_dir', t('Please fill in a ftp remote directory.'));
+      $flag = TRUE;
+    }
+    elseif( substr($form_state['values']['ftp_remote_dir'], -1) !== "/" ){
+      form_set_error('ftp_remote_dir', t('remote directory is not ending with a \'/\''));
+    }
+
+    if(empty($form_state['values']['ftp_filename'])) {
+      form_set_error('ftp_filename', t('Please fill in a filename.'));
+      $flag = TRUE;
+    }
+    elseif(preg_match("/^[a-zA-Z0-9]+$/", $form_state['values']['ftp_filename']) != 1 ) {
+      form_set_error('ftp_filename', t('Please use only letters and or numbers for the filename.'));
+    }
+
 
     // if no form errors, go and check the ftp connection
     if($flag == FALSE) {
