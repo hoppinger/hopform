@@ -298,7 +298,13 @@ function hopform_entries_export($form, &$form_state, $f) {
 }
 
 function hopform_entries_export_submit($form, &$form_state) {
-  $table = hopform_form_construct_table($form_state['hopform_form']);
+  $file = hopform_entries_create_csv($form_state['hopform_form'], 'hopform_form_export_');
+
+  drupal_set_message(t('The CSV file that contains the exported form entries is generated. You can download it <a href="!link">here</a>. This link will be valid for @interval.', array('!link' => file_create_url($file), '@interval' => format_interval(DRUPAL_MAXIMUM_TEMP_FILE_AGE))));
+}
+
+function hopform_entries_create_csv($form_object, $filename) {
+  $table = hopform_form_construct_table($form_object);
 
   $result = array(array_values($table['headers']));
   foreach ($table['rows'] as $_row) {
@@ -310,8 +316,8 @@ function hopform_entries_export_submit($form, &$form_state) {
     $result[] = $row;
   }
 
-  $file = 'private://hopform_form_export_' . $form_state['hopform_form']->fid . '_' . md5(strval(microtime())) . '.csv';
-  $temp_file = drupal_tempnam('temporary://', 'hopform_form_export_');
+  $file = 'private://'. $filename . '_' . $form_object->fid . '_' . md5(strval(microtime())) . '.csv';
+  $temp_file = drupal_tempnam('temporary://', $filename);
 
   $fp = fopen($temp_file, 'w');
   foreach ($result as $fields) {
@@ -325,7 +331,28 @@ function hopform_entries_export_submit($form, &$form_state) {
   );
   file_move($source, $file);
 
-  drupal_set_message(t('The CSV file that contains the exported form entries is generated. You can download it <a href="!link">here</a>. This link will be valid for @interval.', array('!link' => file_create_url($file), '@interval' => format_interval(DRUPAL_MAXIMUM_TEMP_FILE_AGE))));
+  return $file;
+}
+
+/**
+ * Upload file to ftp server
+ */
+function hopform_entries_upload_file( $file_uri, $ftp_server, $ftp_user, $ftp_pass, $ftp_port = '21', $remote_file_path ) {
+  $files = file_load_multiple(array(), array('uri' => $file_uri));
+  $file = reset($files);
+
+  // set up a connection or trow form error
+  $conn_id = ftp_connect($ftp_server, $ftp_port) or die('Could not connect to ftp.'); 
+
+  // try to login
+  // @ is included to suppress posible php warning.
+  if (@ftp_login($conn_id, $ftp_user, $ftp_pass)) {
+    // start upload file
+    ftp_put($conn_id, $remote_file_path . $file->filename, $file->uri, FTP_ASCII);
+  }
+
+  // close the connection
+  ftp_close($conn_id);
 }
 
 function hopform_entries_file_download($uri) {
