@@ -486,7 +486,18 @@ function theme_hopform_actions_form_actions($variables) {
     );
   }
 
-  $header = array(t('Type'), t('Summary'), array('data' => t('Operations'), 'colspan' => 2), t('Weight'));
+  $header = array(
+    array(
+      'data' => t('Type'),
+      'width' => '20%',
+    ),
+    t('Summary'), 
+    array(
+      'data' => t('Operations'),
+      'colspan' => 2
+    ),
+    t('Weight'),
+  );
 
   $output = drupal_render_children($elements);
   $output .= theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'actions-order')));
