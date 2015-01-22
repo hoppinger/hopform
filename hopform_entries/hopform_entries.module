@@ -343,22 +343,37 @@ function hopform_entries_create_csv($form_object, $filename) {
 /**
  * Upload file to ftp server
  */
-function hopform_entries_upload_file( $file_uri, $ftp_server, $ftp_user, $ftp_pass, $ftp_port = '21', $remote_file_path ) {
-  $files = file_load_multiple(array(), array('uri' => $file_uri));
-  $file = reset($files);
-
+// ['ftp_address'], $action->settings['ftp_user'], $action->settings['ftp_pass'], $action->settings['ftp_port'], $action->settings['ftp_remote_dir'] 
+function hopform_entries_upload_file($file_uri, $action) {
+// $ftp_server, $ftp_user, $ftp_pass, $ftp_port = '21', $remote_file_path ) {
   // set up a connection or trow form error
-  $conn_id = ftp_connect($ftp_server, $ftp_port) or die('Could not connect to ftp.'); 
+  $conn_id = ftp_connect($action->settings['ftp_host'], $action->settings['ftp_port']);
+  if (!$conn_id) {
+    return FALSE;
+  }
 
-  // try to login
-  // @ is included to suppress posible php warning.
-  if (@ftp_login($conn_id, $ftp_user, $ftp_pass)) {
-    // start upload file
-    ftp_put($conn_id, $remote_file_path . $file->filename, $file->uri, FTP_ASCII);
+  $login_result = @ftp_login($conn_id, $action->settings['ftp_user'], $action->settings['ftp_pass']);
+  if (!$login_result) {
+    ftp_close($conn_id);
+    return FALSE;
+  }
+
+  $pasv_result = ftp_pasv($conn_id, TRUE);
+  if (!$pasv_result) {
+    ftp_close($conn_id);
+    return FALSE;
+  }
+
+  $put_result = ftp_put($conn_id, $action->settings['ftp_path'], $file_uri, FTP_BINARY);
+
+  if (!$put_result) {
+    ftp_close($conn_id);
+    return FALSE;
   }
 
   // close the connection
   ftp_close($conn_id);
+  return TRUE;
 }
 
 function hopform_entries_file_download($uri) {

@@ -4,8 +4,8 @@
  * Implements hook_drush_command().
  */
 function hopform_entries_drush_command() {
-  $items['hop-upload-csv'] = array(
-    'description' => 'create csv file and upload it to the ftp server.',
+  $items['hopform-entries-upload-csv'] = array(
+    'description' => 'Create CSV files and upload them to the FTP servers.',
     'aliases' => array('hcsv'),
   );
 
@@ -15,35 +15,47 @@ function hopform_entries_drush_command() {
 /**
  * Callback for the hop-upload-csv-command
  */
-function drush_hopform_entries_hop_upload_csv() {
-  
+function drush_hopform_entries_upload_csv() {
+  $current_time = time();
+
   // load type = 'save' values from db
-  $result = db_select('hopform_form_actions', 'hfa')
+  $aids = db_select('hopform_form_actions', 'hfa')
     ->fields('hfa', array('aid'))
     ->condition('type', 'save')
-    ->execute();
+    ->execute()->fetchCol();
 
   // check if has ftp upload enabled
-  while($record = $result->fetchAssoc()) {
-    $action = hopform_form_action_load($record['aid']);
-    $as = $action->settings;
+  foreach ($aids as $aid) {
+    $action = hopform_form_action_load($aid);
+    $previous_time = !empty($action->settings['ftp_last_upload']) ? intval($action->settings['ftp_last_upload']) : 0;
+    $difference = intval(round(floatval($current_time - $previous_time) / 3600.0));
 
-    if($as['ftp_upload_required'] == 1) {
-      // check if upload frequency time is passed
-      if(($as['ftp_upload_frequency_hours'] * 3600) + variable_get('last_hopform_drush_run', time()) > time()) {
-        
-        // create form object by form_id
-        $form = hopform_form_id_form($action->fid);
-        
-        // build csv file
-        $file = hopform_entries_create_csv($form, $as['ftp_filename']);
-        
-        // upload file to ftp
-        hopform_entries_upload_file( $file, $as['ftp_address'], $as['ftp_user'], $as['ftp_pass'], $as['ftp_port'], $as['ftp_remote_dir'] );
-      }
+    if (empty($action->settings['ftp_upload_required'])) {
+      continue;
     }
+    
+    // check if upload frequency time is passed
+    if ($action->settings['ftp_upload_frequency_hours'] > $difference) {
+      continue;
+    }
+
+    // create form object by form_id
+    $form = hopform_form_id_form($action->fid);
+    
+    // build csv file
+    $file = hopform_entries_create_temporary_csv($form, 'hopform_form_export_');
+    
+    // upload file to ftp
+    $upload_result = hopform_entries_upload_file($file, $action);
+
+    if (!$upload_result) {
+      watchdog('hopform_entries', 'Could not upload CSV for form @title to @hostname', array(
+        '@title' => $form->title,
+        '@hostname' => $action->settings['ftp_host'],
+      ), WATCHDOG_ERROR, 'form/' . $form->fid . '/actions/' . $action->aid . '/edit');
+    }
+
+    $action->settings['ftp_last_upload'] = $current_time;
+    hopform_form_action_save($action);
   }
-  
-  // update last call to this function
-  variable_set('last_hopform_drush_run', time());
 }
