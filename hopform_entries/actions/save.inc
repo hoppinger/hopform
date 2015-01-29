@@ -127,7 +127,7 @@ function hopform_entries_hopform_action_save_form_validate($action, $form, &$for
 
     if ($field == 'ftp_path') {
       if (!preg_match('/^(?:[0-9a-zA-Z\_\-.]+\/)*(?:[0-9a-zA-Z\_\-.]+)$/', $value)) {
-        form_error($element, $t('!name field should be a valid path.', array('!name' => $element['#title'])));
+        form_error($element, t('!name field should be a valid path.', array('!name' => $element['#title'])));
       }
     }
   }
