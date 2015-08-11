@@ -202,7 +202,6 @@ function hopform_form_page_view($form) {
   drupal_set_title($form->title);
 
   $build = hopform_form_view_multiple(array($form->fid => $form), 'full', TRUE);
-  $build['form'] = hopform_form_display($form);
 
   return $build;
 }
