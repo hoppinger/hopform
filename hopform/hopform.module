@@ -280,6 +280,20 @@ function hopform_form_types($reset = FALSE) {
 }
 
 /**
+ * Get the names of all the availabel form types.
+ */
+function hopform_form_type_names($reset = FALSE) {
+  $types = hopform_form_types($reset);
+
+  $names = array();
+  foreach ($types as $type) {
+    $names[$type->type] = $type->label;
+  }
+
+  return $names;
+}
+
+/**
  * Collect all the available form types. Should not be used directly. Call 
  * hopform_form_types() instead.
  */
