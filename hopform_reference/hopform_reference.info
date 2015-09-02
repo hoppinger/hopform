@@ -1,0 +1,9 @@
+name = Hopform Reference
+description = Defines a field type for referencing a Hopform form.
+package = Hopform
+core = 7.x
+
+dependencies[] = field
+dependencies[] = references
+dependencies[] = options
+

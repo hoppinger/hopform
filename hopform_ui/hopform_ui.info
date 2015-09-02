@@ -1,5 +1,6 @@
 name = Hopform UI
 core = 7.x
+package = Hopform
 
 dependencies[] = hopform
 dependencies[] = field_ui

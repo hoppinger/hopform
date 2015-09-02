@@ -1,0 +1,29 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the hopform_reference module.
+ */
+
+/**
+ * Implements hook_field_schema().
+ */
+function hopform_reference_field_schema($field) {
+  $columns = array(
+    'fid' => array(
+      'type'     => 'int',
+      'unsigned' => TRUE,
+      'not null' => FALSE,
+    ),
+  );
+  return array(
+    'columns' => $columns,
+    'indexes' => array('fid' => array('fid')),
+    'foreign keys' => array(
+      'fid' => array(
+        'table' => 'hopform_form',
+        'columns' => array('fid' => 'fid'),
+      ),
+    ),
+  );
+}

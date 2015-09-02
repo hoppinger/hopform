@@ -1,4 +1,5 @@
 name = HopForm
+package = Hopform
 
 core = 7.x
 
