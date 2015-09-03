@@ -369,7 +369,7 @@ function hopform_form_delete($fid) {
   return entity_delete('hopform_form', $fid);
 }
 function hopform_hopform_form_delete($form) {
-  db_delete('hopform_actions')->condition('fid', $form->fid)->execute();
+  db_delete('hopform_form_actions')->condition('fid', $form->fid)->execute();
 }
 function hopform_hopform_form_insert($form) {
   hopform_form_save_path($form);
