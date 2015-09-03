@@ -195,6 +195,19 @@ function hopform_form_form_submit($form, &$form_state) {
   }
 }
 
+function hopform_form_form_delete_submit($form, &$form_state) {
+  $destination = array();
+  if (isset($_GET['destination'])) {
+    $destination = drupal_get_destination();
+    unset($_GET['destination']);
+  }
+
+  $f = $form_state['hopform_form'];
+
+  $form_state['redirect'] = array('form/' . $f->fid . '/delete', array('query' => $destination));
+
+}
+
 /**
  * Menu callback. View Hopform Form entity.
  */
