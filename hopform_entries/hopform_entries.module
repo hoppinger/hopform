@@ -419,3 +419,7 @@ function hopform_form_entries_delete_confirm_submit($form, &$form_state) {
 
   $form_state['redirect'] = "form/{$f->fid}/entries";
 }
+
+function hopform_entries_hopform_form_delete($form) {
+  db_delete('hopform_form_entries')->condition('fid', $form->fid)->execute();
+}
