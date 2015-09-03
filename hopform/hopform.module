@@ -580,27 +580,38 @@ function hopform_elements() {
 /**
  * Implements hook_form_builder_types().
  */
-function hopform_form_builder_types() {
-  $elements = hopform_elements();
-
-  // register all our types as form type for form_builder and assign the correct
-  // elements to it.
+function hopform_form_builder_form_types() {
+  // register all our types as form type for form_builder
   $types = array();
+
   foreach (hopform_form_types() as $type => $info) {
-    if (empty($info->elements)) {
-      $types['hopform_' . $type] = $elements;
-      continue;
-    }
-    
     $types['hopform_' . $type] = array();
-    foreach ($info->elements as $element_type) {
-      if (!empty($elements[$element_type])) {
-        $types['hopform_' . $type][$element_type] = $elements[$element_type];
-      }
-    }
   }
 
   return $types;
+}
+
+function hopform_form_builder_element_types($form_type, $form_id) {
+  $types = hopform_form_builder_form_types();
+  if (!isset($types[$form_type])) {
+    return;
+  }
+
+  $info = $types[$form_type];
+
+  $elements = hopform_elements();
+  if (empty($info->elements)) {
+    return $elements;
+  }
+
+  $_elements = array();
+  foreach ($info->elements as $element_type) {
+    if (!empty($elements[$element_type])) {
+      $_element[$element_type] = $elements[$element_type];
+    }
+  }
+
+  return $_elements;
 }
 
 /**
