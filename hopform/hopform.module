@@ -171,6 +171,19 @@ function hopform_menu() {
     'weight' => 5,
   );
 
+  if (module_exists('devel')) {
+    $items['form/%hopform_form/devel'] = array(
+      'title' => 'Devel',
+      'page callback' => 'devel_load_object',
+      'page arguments' => array('hopform_form', 1),
+      'access arguments' => array('access devel information'),
+      'type' => MENU_LOCAL_TASK,
+      'file' => 'devel.pages.inc',
+      'file path' => drupal_get_path('module', 'devel'),
+      'weight' => 100,
+    );
+  }
+
   return $items;
 }
 
