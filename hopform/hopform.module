@@ -672,11 +672,12 @@ function hopform_form_display($form) {
 function hopform_form_display_form($form, &$form_state, $f) {
   $form_state['hopform_form'] = $f;
 
-  if (!empty($f->form)) {
-    foreach (element_children($f->form) as $key) if (!empty($f->form[$key])) {
-      $form[$key] = $f->form[$key];
-    }
-  }
+  $loader = FormBuilderLoader::instance();
+  $element_info = $loader->getElementTypeInfo('hopform_' . $f->type, hopform_form_form_id($f));
+
+  $form_array = $loader->fromStorage('hopform_' . $f->type, hopform_form_form_id($f))->getFormArray();
+
+  _hopform_form_display($form, $form_array, $element_info);
 
   $form['actions'] = array('#type' => 'actions');
   $form['actions']['submit'] = array(
@@ -686,6 +687,28 @@ function hopform_form_display_form($form, &$form_state, $f) {
   );
 
   return $form;
+}
+
+function _hopform_form_display(&$form, $form_src, $elements_info) {
+  foreach(element_children($form_src) as $key) {
+    if (
+      empty($form_src[$key]['#form_builder']) || 
+      empty($form_src[$key]['#form_builder']['element_type']) ||
+      empty($elements_info[$form_src[$key]['#form_builder']['element_type']])
+    ) {
+      continue;
+    }
+
+    $element_info = $elements_info[$form_src[$key]['#form_builder']['element_type']];
+
+    $form[$key] = $element_info['default'];
+    foreach ($element_info['properties'] as $property) {
+      if (isset($form_src[$key]['#' . $property])) {
+        $form[$key]['#' . $property] = $form_src[$key]['#' . $property];
+      }
+    }
+    _hopform_form_display($form[$key], $form_src[$key], $elements_info);
+  }
 }
 
 function hopform_form_display_form_submit($form, &$form_state) {
