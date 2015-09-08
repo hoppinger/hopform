@@ -826,6 +826,7 @@ function hopform_mail($key, &$message, $params) {
 function hopform_action_email_mail(&$message, $params) {
   $message['subject'] = $params['action']->settings['subject'];
 
+  $message['params']['format'] = SWIFTMAILER_FORMAT_HTML;
   $message['body'] = array();
   if (!empty($params['intro'])) {
     $message['body'][] = "<p>" . str_replace(array(" ", "\n"), array("&nbsp;", "<br />"), $params['intro']) . "</p>";
