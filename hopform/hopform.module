@@ -677,7 +677,16 @@ function hopform_form_display_form($form, &$form_state, $f) {
 
   $form_array = $loader->fromStorage('hopform_' . $f->type, hopform_form_form_id($f))->getFormArray();
 
-  _hopform_form_display($form, $form_array, $element_info);
+  $prefill = array();
+  if (!empty($_GET['prefill'])) {
+    if (is_array($_GET['prefill'])) {
+      $prefill = $_GET['prefill'];
+    } else {
+      $prefill = array($_GET['prefill']);
+    }
+  }
+
+  _hopform_form_display($form, $form_array, $element_info, $prefill);
 
   $form['actions'] = array('#type' => 'actions');
   $form['actions']['submit'] = array(
@@ -689,7 +698,7 @@ function hopform_form_display_form($form, &$form_state, $f) {
   return $form;
 }
 
-function _hopform_form_display(&$form, $form_src, $elements_info) {
+function _hopform_form_display(&$form, $form_src, $elements_info, &$prefill) {
   foreach(element_children($form_src) as $key) {
     if (
       empty($form_src[$key]['#form_builder']) || 
@@ -707,7 +716,12 @@ function _hopform_form_display(&$form, $form_src, $elements_info) {
         $form[$key]['#' . $property] = $form_src[$key]['#' . $property];
       }
     }
-    _hopform_form_display($form[$key], $form_src[$key], $elements_info);
+
+    if (!empty($form[$key]['#default_value_from_url']) && !empty($prefill)) {
+      $form[$key]['#default_value'] = array_shift($prefill);
+    }
+
+    _hopform_form_display($form[$key], $form_src[$key], $elements_info, $prefill);
   }
 }
 
@@ -862,4 +876,26 @@ function hopform_hopform_form_view($form, $view_mode, $langcode) {
   if ($view_mode == 'full') {
     $form->content['form'] = hopform_form_display($form);
   }
+}
+
+function hopform_form_builder_properties($form_type) {
+  return array(
+    'default_value_from_url' => array(
+      'form' => 'hopform_form_builder_property_default_value_from_url_form',
+    )
+  );
+}
+
+function hopform_form_builder_property_default_value_from_url_form(&$form_state, $form_type, $element, $property) {
+  $form = array();
+
+  $form['default_value_from_url'] = array(
+    '#title' => t('Default value from URL'),
+    '#description' => t('Get the default value from URL. Use this as <em>/url?prefill=value</em>.'),
+    '#type' => 'checkbox',
+    '#default_value' => $element['#default_value_from_url'],
+    '#weight' => 2,
+  );
+
+  return $form;
 }
