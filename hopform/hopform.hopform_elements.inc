@@ -60,6 +60,7 @@ function _hopform_hopform_elements() {
       '#type' => 'select',
       '#options' => array('1' => 'one', '2' => 'two', '3' => 'three'),
       '#multiple_toggle' => TRUE,
+      '#default_value' => '',
     ),
     'show_callback' => 'hopform_elements_select_show',
   );
