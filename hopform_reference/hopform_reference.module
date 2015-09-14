@@ -246,7 +246,7 @@ function hopform_reference_field_formatter_prepare_view($entity_type, $entities,
       foreach ($items[$id] as $delta => $item) {
         if (!empty($entities[$item['fid']])) {
           $items[$id][$delta]['form'] = $entities[$item['fid']];
-          $items[$id][$delta]['access'] = hopform_form_access('view', $entities[$item['fid']]);
+          $items[$id][$delta]['access'] = TRUE; // hopform_form_access('view', $entities[$item['fid']]);
         }
       }
     }
