@@ -316,7 +316,6 @@ function hopform_entries_create_temporary_csv($form_object, $filename) {
     $result[] = $row;
   }
 
-  $file = 'private://'. $filename . '_' . $form_object->fid . '_' . md5(strval(microtime())) . '.csv';
   $temp_file = drupal_tempnam('temporary://', $filename);
 
   $fp = fopen($temp_file, 'w');
@@ -325,7 +324,7 @@ function hopform_entries_create_temporary_csv($form_object, $filename) {
   }
   fclose($fp);
 
-  return $temp_file;  
+  return $temp_file;
 }
 
 function hopform_entries_create_csv($form_object, $filename) {
@@ -335,6 +334,7 @@ function hopform_entries_create_csv($form_object, $filename) {
     'uri' => $temp_file,
     'filemime' => 'text/csv',
   );
+  $file = 'temporary://'. $filename . '_' . $form_object->fid . '_' . md5(strval(microtime())) . '.csv';
   file_move($source, $file);
 
   return $file;
