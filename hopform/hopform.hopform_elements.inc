@@ -146,15 +146,39 @@ function _hopform_hopform_elements() {
     'show_callback' => 'hopform_elements_textarea_show',
   );
 
+  $fields['file'] = array(
+    'title' => t('File'),
+    'properties' => array(
+      'title',
+      'description',
+      'required',
+      'upload_location',
+      'upload_validators',
+    ),
+    'default' => array(
+      '#title' => t('New file'),
+      '#type' => 'managed_file',
+      '#upload_location' => 'private://hopform',
+      '#upload_validators' => array(
+        'file_validate_extensions' => array('pdf'),
+        'file_validate_size' => array(5 * 1024),
+      ),
+    ),
+    'show_callback' => 'hopform_elements_file_show',
+    'url_callback' => 'hopform_elements_file_url',
+  );
+
   return $fields;
 }
 
 function hopform_elements_textarea_show($element, $value) {
   return $value;
 }
+
 function hopform_elements_text_show($element, $value) {
   return $value;
 }
+
 function hopform_elements_checkboxes_show($element, $value) {
   $result = array();
   foreach (array_keys(array_filter($value)) as $key) {
@@ -170,4 +194,15 @@ function hopform_elements_radios_show($element, $value) {
 
 function hopform_elements_select_show($element, $value) {
   return !empty($element['#multiple']) ? hopform_elements_checkboxes_show($element, $value) : hopform_elements_radios_show($element, $value);
+}
+
+function hopform_elements_file_show($element, $value) {
+  $file = file_load($value);
+  return $file ? $file->filename : '';
+}
+
+function hopform_elements_file_url($value) {
+  $file = file_load($value);
+
+  return $file ? file_create_url($file->uri) : FALSE;
 }

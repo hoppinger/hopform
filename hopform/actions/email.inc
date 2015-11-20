@@ -130,7 +130,9 @@ function hopform_hopform_action_email_execute($action, $form, &$form_state, $f) 
   $language = $GLOBALS['language'];
 
   $result = hopform_form_build_values($f->form, $form_state);
-  $text   = _hopform_hopform_action_email_construct_text($result);
+  $files  = hopform_extract_files($result);
+  
+  $text   = _hopform_hopform_action_email_construct_text($result, $params);
   $text   = implode("\n", $text);
 
   $intro  = _hopform_hopform_action_email_format_text(!empty($action->settings['intro']) ? $action->settings['intro'] : '');
@@ -142,27 +144,44 @@ function hopform_hopform_action_email_execute($action, $form, &$form_state, $f) 
         'text' => $text,
         'action' => $action,
         'intro' => $intro,
+        'files' => $files,
       ), $action->settings['from']);
     }
   }
 }
 
-function _hopform_hopform_action_email_construct_text($info, $prefix = 0, $width = 80) {
+function _hopform_hopform_action_email_construct_text($info, &$params, $prefix = 0, $width = 80) {
   $text = array();
 
   foreach ($info as $key => $_info) {
     if (!empty($_info['label'])) {
       $text[] = $_info['label'] . ':';
     }
+
+    $value = FALSE;
     if (!empty($_info['value'])) {
-      if (is_array($_info['value'])) {
-        foreach ($_info['value'] as $row) {
+      $value = $_info['value'];
+
+      if (!empty($_info['type']) && !empty($_info['raw_value'])) {
+        if ($_info['type'] == 'file') {
+          $file = file_load($_info['raw_value']);
+          if (!empty($file)) {
+            $params['files'][] = $file;
+          }
+        }
+      }
+    }
+
+    if (!empty($value)) {
+      if (is_array($value)) {
+        foreach ($value as $row) {
           $text = array_merge($text, _hopform_hopform_action_email_format_text($row, $width));
         }
       } else {
-        $text = array_merge($text, _hopform_hopform_action_email_format_text($_info['value'], $width));
+        $text = array_merge($text, _hopform_hopform_action_email_format_text($value, $width));
       }
     }
+
     if (!empty($_info['children'])) {
       $text = array_merge($text, _hopform_hopform_action_email_construct_text($_info['children'], $prefix + 2, $width - 2));
     }

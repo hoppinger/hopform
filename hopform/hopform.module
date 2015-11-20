@@ -859,9 +859,16 @@ function hopform_form_build_values($elements, &$form_state) {
     }
 
     $element_info = $elements_info[$element['#form_builder']['element_type']];
-    $result[$key] = array('label' => $element['#title']);
-    if (!empty($form_state['values'][$key]) && !empty($element_info['show_callback'])) {
-      $result[$key]['value'] = $element_info['show_callback']($element, $form_state['values'][$key]);
+    $result[$key] = array(
+      'label' => $element['#title'],
+      'type' => $element['#form_builder']['element_type'],
+    );
+    if (!empty($form_state['values'][$key])) {
+      $result[$key]['raw_value'] = $form_state['values'][$key];
+
+      if (!empty($element_info['show_callback'])) {
+        $result[$key]['value'] = $element_info['show_callback']($element, $form_state['values'][$key]);
+      }
     }
 
     if (element_children($element)) {
@@ -870,6 +877,30 @@ function hopform_form_build_values($elements, &$form_state) {
   }
 
   return $result;
+}
+
+function hopform_extract_files($values) {
+  $fids = array();
+
+  foreach ($values as $key => $info) {
+    if (!empty($info['type']) && $info['type'] == 'file' && !empty($info['raw_value'])) {
+      $fid = $info['raw_value'];
+      if (!in_array($fid, $fids)) {
+        $fids[] = $fid;
+      }
+    }
+
+    if (!empty($info['children'])) {
+      $_fids = hopform_extract_files($info['children']);
+      foreach ($_fids as $fid) {
+        if (!in_array($fid, $fids)) {
+          $fids[] = $fid;
+        }
+      }
+    }
+  }
+
+  return $fids ? file_load_multiple($fids) : array();
 }
 
 function hopform_hopform_form_view($form, $view_mode, $langcode) {
@@ -882,7 +913,14 @@ function hopform_form_builder_properties($form_type) {
   return array(
     'default_value_from_url' => array(
       'form' => 'hopform_form_builder_property_default_value_from_url_form',
-    )
+    ),
+    'upload_location' => array(
+      'form' => 'hopform_form_builder_property_upload_location_form',
+    ),
+    'upload_validators' => array(
+      'form' => 'hopform_form_builder_property_upload_validators_form',
+      'submit' => array('hopform_form_builder_property_upload_validators_form_submit'),
+    ),
   );
 }
 
@@ -898,4 +936,85 @@ function hopform_form_builder_property_default_value_from_url_form(&$form_state,
   );
 
   return $form;
+}
+
+function hopform_form_builder_property_upload_location_form(&$form_state, $form_type, $element, $property) {
+  $form = array();
+
+  $form['upload_location'] = array(
+    '#title' => t('Upload destination'),
+    '#description' => t('Where should the uploaded file be stored? This has consequences for how the file is accessible and should match with form action that you choose. The indefinite storage only works with actions that save the entry and if you save the entry it makes sense to use indefinite storage because otherwise you keep the entries in the database but loose the files.'),
+    '#type' => 'select',
+    '#options' => array(
+      'private://hopform' => t('Private filesystem - File will be stored indefinitely and will only be accessible by administrators.'),
+      'temporary://hopform' => t('Temporary filesystem - File will be stored temporary and will only be accessible by administrators.'),
+      'public://hopform' => t('Public filesystem - File will be stored indefinitely and will accessible by everyone.'),
+    ),
+    '#default_value' => $element['#upload_location'],
+    '#weight' => 12,
+  );
+
+  return $form;
+}
+
+function hopform_format_size($size, $langcode = NULL) {
+  if ($size % DRUPAL_KILOBYTE > 0) {
+    return strval($size);
+  }
+  
+  $size = $size / DRUPAL_KILOBYTE; // Convert bytes to kilobytes.
+  $units = array('KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB');
+  foreach ($units as $unit) {
+    if ($size % DRUPAL_KILOBYTE > 0) {
+      break;
+    }
+
+    $size = $size / DRUPAL_KILOBYTE;
+  }
+
+  return strval($size) . ' ' . $unit;
+}
+
+function hopform_form_builder_property_upload_validators_form(&$form_state, $form_type, $element, $property) {
+  $form = array();
+
+  $extensions = implode(', ', $element['#upload_validators']['file_validate_extensions']);
+  $form['upload_validators_extensions'] = array(
+    '#form_builder' => array('property_group' => 'validation'),
+    '#description' => t('Separate extensions with a space or comma and do not include the leading dot.'),
+    '#type' => 'textfield',
+    '#title' => t('Allowed file extensions'),
+    '#default_value' => $extensions,
+    '#element_validate' => array('_file_generic_settings_extensions'),
+    '#weight' => 12,
+    '#required' => TRUE,
+  );
+
+  $size = '';
+  if (!empty($element['#upload_validators']['file_validate_size'])) {
+    $size = hopform_format_size($element['#upload_validators']['file_validate_size'][0]);
+  }
+
+  $form['upload_validators_size'] = array(
+    '#form_builder' => array('property_group' => 'validation'),
+    '#description' => t('Enter a value like "512" (bytes), "80 KB" (kilobytes) or "50 MB" (megabytes) in order to restrict the allowed file size. If left empty the file sizes will be limited only by PHP\'s maximum post and file upload sizes (current limit <strong>%limit</strong>).', array('%limit' => hopform_format_size(file_upload_max_size()))),
+    '#type' => 'textfield',
+    '#title' => t('Maximum upload size'),
+    '#default_value' => $size,
+    '#element_validate' => array('_file_generic_settings_max_filesize'),
+    '#weight' => 12,
+  );
+
+  return $form;
+}
+
+function hopform_form_builder_property_upload_validators_form_submit(&$form, &$form_state) {
+  $upload_validators = array(
+    'file_validate_extensions' => array($form_state['values']['upload_validators_extensions']),
+  );
+  if (!empty($form_state['values']['upload_validators_size'])) {
+    $upload_validators['file_validate_size'] = array(parse_size($form_state['values']['upload_validators_size']));
+  }
+
+  $form_state['values']['upload_validators'] = $upload_validators;
 }

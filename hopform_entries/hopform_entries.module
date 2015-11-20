@@ -92,6 +92,23 @@ function hopform_form_entry_save($entry) {
     $return = drupal_write_record('hopform_form_entries', $entry, $entry->feid);
   }
 
+  $files = hopform_extract_files($entry->data);
+  foreach ($files as $file) {
+    $list = file_usage_list($file);
+    if ($file->status != FILE_STATUS_PERMANENT) {
+      $file->status = FILE_STATUS_PERMANENT;
+      file_save($file);
+    }
+
+    if (
+      empty($list['hopform_entries']) || 
+      empty($list['hopform_entries']['hopform_form_entry']) ||
+      empty($list['hopform_entries']['hopform_form_entry'][$entry->feid])
+    ) {
+      file_usage_add($file, 'hopform_entries', 'hopform_form_entry', $entry->feid);
+    }
+  }
+
   return $return;
 }
 
@@ -152,6 +169,7 @@ function template_preprocess_hopform_form_entry(&$variables) {
 
 function hopform_form_entry_build_data_content($data) {
   $build = array();
+  $elements = hopform_elements();
 
   foreach ($data as $key => $info) {
     $build[$key] = array(
@@ -166,6 +184,16 @@ function hopform_form_entry_build_data_content($data) {
         $build[$key]['#value'] = implode(', ', $info['value']);
       } else {
         $build[$key]['#value'] = $info['value'];
+      }
+    }
+
+    if (!empty($info['type']) && !empty($elements[$info['type']]) && !empty($info['raw_value'])) {
+      $element_info = $elements[$info['type']];
+      if (!empty($element_info['url_callback'])) {
+        $url = call_user_func($element_info['url_callback'], $info['raw_value']);
+        if ($url) {
+          $build[$key]['#url'] = $url;
+        }
       }
     }
 
