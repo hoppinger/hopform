@@ -183,7 +183,7 @@ function _hopform_hopform_action_email_construct_text($info, &$params, $prefix =
     }
 
     if (!empty($_info['children'])) {
-      $text = array_merge($text, _hopform_hopform_action_email_construct_text($_info['children'], $prefix + 2, $width - 2));
+      $text = array_merge($text, _hopform_hopform_action_email_construct_text($_info['children'], $params, $prefix + 2, $width - 2));
     }
 
     if (!count($text) || $text[count($text)-1] != '') {
