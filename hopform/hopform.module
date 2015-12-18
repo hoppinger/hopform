@@ -879,7 +879,7 @@ function hopform_form_build_values($elements, &$form_state) {
   return $result;
 }
 
-function hopform_extract_files($values) {
+function hopform_extract_fids($values) {
   $fids = array();
 
   foreach ($values as $key => $info) {
@@ -891,7 +891,7 @@ function hopform_extract_files($values) {
     }
 
     if (!empty($info['children'])) {
-      $_fids = hopform_extract_files($info['children']);
+      $_fids = hopform_extract_fids($info['children']);
       foreach ($_fids as $fid) {
         if (!in_array($fid, $fids)) {
           $fids[] = $fid;
@@ -900,6 +900,11 @@ function hopform_extract_files($values) {
     }
   }
 
+  return $fids;
+}
+
+function hopform_extract_files($values) {
+  $fids = hopform_extract_fids($values);
   return $fids ? file_load_multiple($fids) : array();
 }
 
