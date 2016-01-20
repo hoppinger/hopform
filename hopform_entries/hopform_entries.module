@@ -326,7 +326,7 @@ function hopform_entries_export($form, &$form_state, $f) {
 }
 
 function hopform_entries_export_submit($form, &$form_state) {
-  $file = hopform_entries_create_csv($form_state['hopform_form'], 'hopform_form_export_');
+  $file = hopform_entries_create_csv($form_state['hopform_form'], 'hopform_form_export');
 
   drupal_set_message(t('The CSV file that contains the exported form entries is generated. You can download it <a href="!link">here</a>. This link will be valid for @interval.', array('!link' => file_create_url($file), '@interval' => format_interval(DRUPAL_MAXIMUM_TEMP_FILE_AGE))));
 }
@@ -404,21 +404,52 @@ function hopform_entries_upload_file($file_uri, $action) {
   return TRUE;
 }
 
-function hopform_entries_file_download($uri) {
-  if (preg_match('/^private:\/\/hopform_form_export_([0-9]+)_[0-9a-f]{32}\.csv$/', $uri, $matches)) {
+function hopform_entries_extract_form_from_uri($uri) {
+  if (preg_match('/^temporary:\/\/hopform_form_export_([0-9]+)_[0-9a-f]{32}\.csv$/', $uri, $matches)) {
     $form = hopform_form_load($matches[1]);
-    if (!$form) {
-      return -1;
-    }
 
-    if (!hopform_form_access('entries_view', $form)) {
-      return -1;
+    if ($form) {
+      return $form;
     }
-
-    return array(
-      'Content-Disposition' => 'attachment; filename="hopform_form_export_' . $form->fid . '.csv"'
-    );
   }
+
+  return FALSE;
+}
+
+function hopform_entries_file_download($uri) {
+  $form = hopform_entries_extract_form_from_uri($uri);
+  if (!$form) {
+    return;
+  }
+
+  if (!hopform_form_access('entries_view', $form, $account)) {
+    return -1;
+  }
+
+  return array(
+    'Content-Type' => 'text/csv',
+    'Cache-Control' => 'private',
+    'Content-Disposition' => 'attachment; filename="hopform_form_export_' . $form->fid . '.csv"'
+  );
+}
+
+function hopform_entries_file_entity_access($op, $file, $account) {
+  if ($op != 'view') {
+    return FILE_ENTITY_ACCESS_IGNORE;
+  }
+
+  $uri = $file->uri;
+  $form = hopform_entries_extract_form_from_uri($uri);
+
+  if (!$form) {
+    return FILE_ENTITY_ACCESS_IGNORE;
+  }
+
+  if (hopform_form_access('entries_view', $form, $account)) {
+    return FILE_ENTITY_ACCESS_ALLOW;
+  }
+
+  return FILE_ENTITY_ACCESS_DENY;
 }
 
 function hopform_form_entries_delete_confirm($form, &$form_state, $f, $entry){
