@@ -211,7 +211,7 @@ function _hopform_hopform_action_email_format_text($text, $width = 80) {
     }
     else {
       $wrapped = wordwrap($chunk, $width);
-      $result += _hopform_hopform_action_email_format_text($wrapped, $width);
+      $result = array_merge($result, explode("\n", $wrapped));
     }
   }
 
