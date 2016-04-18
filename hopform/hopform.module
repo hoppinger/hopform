@@ -271,6 +271,32 @@ function hopform_theme() {
   );
 }
 
+function hopform_form_form_builder_field_configure_alter(&$form, &$form_state, $form_id) {
+  if (empty($form['#_edit_element']['#id'])) {
+    return;
+  }
+
+  $form['form-key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Form element key'),
+    '#default_value' => $form['#_edit_element']['#key'], 
+    '#description' => t('Use this key to identify this very field in other sections. This value is automatically generated and thus, cannot be altered.'),
+    '#disabled' => TRUE,
+    '#form_builder' => array(
+      'property_group' => 'meta_info',
+    ),
+  );
+}
+
+function hopform_form_builder_property_groups($form_type) {
+  return array(
+    'meta_info' => array(
+      'weight' => 10,
+      'title' => t('Meta information'),
+    ),
+  );
+}
+
 
 /**
  * Get all the available form types.

@@ -111,9 +111,17 @@ function _hopform_hopform_action_email_element_validate($element, &$form_state) 
   }
 
   $email = $element['#value'];
-  if (!valid_email_address($email)) {
-    form_error($element, t('Only valid e-mailaddress are allowed.'));
+  if (!_hopform_email_token_validate($email) && !valid_email_address($email)) {
+    form_error($element, t('Only valid e-mailaddress or field tokens are allowed.'));
   }
+}
+
+/*
+ * Token must be of format: [new-434243434] (example)
+ */
+function _hopform_email_token_validate($token) {
+  preg_match('/^\[(.*)\]/', $token, $matches);
+  return $matches;
 }
 
 function hopform_hopform_action_email_summary($action) {
@@ -140,6 +148,22 @@ function hopform_hopform_action_email_execute($action, $form, &$form_state, $f) 
 
   if (!empty($action->settings) && !empty($action->settings['addresses'])) {
     foreach ($action->settings['addresses'] as $address) {
+      $matches = _hopform_email_token_validate($address);
+      if (!empty($matches)) {
+        if (empty($matches[1])) {
+          continue;
+        }
+
+        if (empty($form_state['values'][$matches[1]])) {
+          continue;
+        }
+
+        $address = $form_state['values'][$matches[1]];
+        if (!valid_email_address($address)) {
+          continue;
+        }
+      }
+
       drupal_mail('hopform', 'action_email', $address, $language, array(
         'text' => $text,
         'action' => $action,
