@@ -272,7 +272,7 @@ function hopform_theme() {
 }
 
 function hopform_form_form_builder_field_configure_alter(&$form, &$form_state, $form_id) {
-  if (empty($form['#_edit_element']['#id'])) {
+  if (empty($form['#_edit_element']['#key'])) {
     return;
   }
 
