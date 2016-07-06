@@ -872,6 +872,10 @@ function hopform_action_email_mail(&$message, $params) {
     $message['body'][] = "<p>" . str_replace(array(" ", "\n"), array("&nbsp;", "<br />"), $params['intro']) . "</p>";
   }
   $message['body'][] = "<p>" . str_replace(array(" ", "\n"), array("&nbsp;", "<br />"), $params['text']) . "</p>";
+
+  if (!empty($params['reply_to'])) {
+    $message['headers']['Reply-To'] = $params['reply_to'];
+  }
 }
 
 function hopform_form_build_values($elements, &$form_state) {

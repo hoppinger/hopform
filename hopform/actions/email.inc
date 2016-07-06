@@ -1,6 +1,10 @@
 <?php
 
 function hopform_hopform_action_email_form($action, &$form, &$form_state) {
+  $form['info'] = array(
+    '#markup' => '<p>' . t('In all the fields that accept an e-mailaddress, you can also fill in a token that points to a field in the form. If you edit the form, in the configuration for all form fields is a tab \'Meta information\', which displays the internal identifier of the form field. If you found the internal identifier that you want to use, in this settings form you can fill in \'[IDENTIFIER]\', which will instruct the form builder to use the address from the form, instead of a default address.') . '</p>',
+  );
+
   if (!isset($form_state['addresses_count'])) {
     $form_state['addresses'] = !empty($action->settings['addresses']) ? array_values($action->settings['addresses']) : array();
     $form_state['addresses_count'] = !empty($action->settings['addresses']) ? (count($action->settings['addresses']) + 1) : 3;
@@ -50,6 +54,16 @@ function hopform_hopform_action_email_form($action, &$form, &$form_state) {
     '#element_validate' => array('_hopform_hopform_action_email_element_validate'),
     '#required' => TRUE,
   );
+
+  $form['reply_to'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Reply-To address'),
+    '#default_value' => !empty($action->settings['reply_to']) ? $action->settings['reply_to'] : '',
+    '#element_validate' => array('_hopform_hopform_action_email_element_validate'),
+    '#required' => FALSE,
+    '#description' => t('Defaults to the From Address, when not filled'),
+  );
+
   $form['subject'] = array(
     '#type' => 'textfield',
     '#title' => t('Subject'),
@@ -81,6 +95,7 @@ function hopform_hopform_action_email_form_submit($action, $form, &$form_state) 
   _hopform_hopform_action_email_form_submit_cleanup($form_state);
   $action->settings['addresses'] = $form_state['addresses'];
   $action->settings['from'] = $form_state['values']['from'];
+  $action->settings['reply_to'] = $form_state['values']['reply_to'];
   $action->settings['subject'] = $form_state['values']['subject'];
   $action->settings['intro'] = $form_state['values']['intro'];
 }
@@ -134,6 +149,35 @@ function hopform_hopform_action_email_summary($action) {
   ));
 }
 
+function _hopform_email_match_token($address, $form_state) {
+  $matches = _hopform_email_token_validate($address);
+  
+  // This is not a token, just stick the address
+  if (empty($matches)) {
+    return $address;
+  }
+
+  // Invalid token
+  if (empty($matches[1])) {
+    return FALSE;
+  }
+
+  // Token that points to a field that has no value
+  if (empty($form_state['values'][$matches[1]])) {
+    return FALSE;
+  }
+
+  // Get value from field.
+  $address = $form_state['values'][$matches[1]];
+
+  // Not valid mail in field
+  if (!valid_email_address($address)) {
+    return FALSE;
+  }
+
+  return $address;
+}
+
 function hopform_hopform_action_email_execute($action, $form, &$form_state, $f) {
   $language = $GLOBALS['language'];
 
@@ -146,30 +190,34 @@ function hopform_hopform_action_email_execute($action, $form, &$form_state, $f) 
   $intro  = _hopform_hopform_action_email_format_text(!empty($action->settings['intro']) ? $action->settings['intro'] : '');
   $intro = implode("\n", $intro);
 
+  $from = _hopform_email_match_token($action->settings['from'], $form_state);
+  if (empty($from)) {
+    return;
+  }
+
+  $reply_to = FALSE;
+  if (!empty($action->settings['reply_to'])) {
+    $reply_to = _hopform_email_match_token($action->settings['reply_to'], $form_state);
+  }
+
+  $params = array(
+    'text' => $text,
+    'action' => $action,
+    'intro' => $intro,
+    'files' => $files,
+  );
+  if (!empty($reply_to)) {
+    $params['reply_to'] = $reply_to;
+  }
+
   if (!empty($action->settings) && !empty($action->settings['addresses'])) {
     foreach ($action->settings['addresses'] as $address) {
-      $matches = _hopform_email_token_validate($address);
-      if (!empty($matches)) {
-        if (empty($matches[1])) {
-          continue;
-        }
-
-        if (empty($form_state['values'][$matches[1]])) {
-          continue;
-        }
-
-        $address = $form_state['values'][$matches[1]];
-        if (!valid_email_address($address)) {
-          continue;
-        }
+      $address = _hopform_email_match_token($address, $form_state);
+      if (empty($address)) {
+        continue;
       }
 
-      drupal_mail('hopform', 'action_email', $address, $language, array(
-        'text' => $text,
-        'action' => $action,
-        'intro' => $intro,
-        'files' => $files,
-      ), $action->settings['from']);
+      drupal_mail('hopform', 'action_email', $address, $language, $params, $from);
     }
   }
 }
