@@ -1,0 +1,6 @@
+name = HopForm Captcha
+core = 7.x
+package = Hopform
+
+dependencies[] = hopform
+dependencies[] = captcha
