@@ -1,0 +1,31 @@
+<?php
+
+module_load_include('inc', 'captcha', 'captcha.admin');
+module_load_include('inc', 'captcha', 'captcha');
+
+/**
+ * Implements hook_form_alter().
+ */
+function hopform_captcha_form_hopform_form_form_alter(&$form, &$form_state, $form_id) {
+
+  $current_captcha = captcha_get_form_id_setting(HOPFORM_FORM_PREFIX.$form_state['hopform_form']->fid);
+  $default_value = $current_captcha->module.'/'.$current_captcha->captcha_type;
+
+  $form['captcha_type'] = array(
+    '#title' => t('What kind of captcha challenge would you like?'),
+    '#type' => 'select',
+    '#options' => _captcha_available_challenge_types(FALSE),
+    '#empty_option' => 'Geen CAPTCHA',
+    '#empty_value' => '',
+    '#default_value' => $default_value,
+  );
+
+  $form['#submit'][] = 'hopform_captcha_submit';
+
+}
+
+function hopform_captcha_submit(&$form, &$form_state, $form_id) {
+  $value = !empty($form_state['values']['captcha_type']) ? $form_state['values']['captcha_type'] : NULL;
+  captcha_set_form_id_setting(HOPFORM_FORM_PREFIX.$form_state['fid'], $value);
+
+}
