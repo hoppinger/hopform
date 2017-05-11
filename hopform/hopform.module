@@ -1053,3 +1053,46 @@ function hopform_form_builder_property_upload_validators_form_submit(&$form, &$f
 
   $form_state['values']['upload_validators'] = $upload_validators;
 }
+
+function hopform_file_insert($file) {
+  $uri = $file->uri;
+  $prefixes = array('private://hopform', 'temporary://hopform');
+
+  foreach ($prefixes as $prefix) {
+    if (substr($uri, 0, strlen($prefix) + 1) != $prefix . '/') {
+      continue;
+    }
+
+    if (!isset($_SESSION['hopform_files'])) {
+      $_SESSION['hopform_files'] = array();
+    }
+
+    $_SESSION['hopform_files'][] = $file->fid;
+  }
+}
+
+function hopform_file_entity_access($op, $file, $account) {
+  global $user;
+
+  if ($op != 'view') {
+    return FILE_ENTITY_ACCESS_IGNORE;
+  }
+
+  if ($user->uid != $account->uid) {
+    return FILE_ENTITY_ACCESS_IGNORE;
+  }
+
+  if (empty($file->fid)) {
+    return FILE_ENTITY_ACCESS_IGNORE;
+  }
+
+  if (!isset($_SESSION['hopform_files'])) {
+    return FILE_ENTITY_ACCESS_IGNORE;
+  }
+
+  if (in_array($file->fid, $_SESSION['hopform_files'])) {
+    return FILE_ENTITY_ACCESS_ALLOW;
+  }
+
+  return FILE_ENTITY_ACCESS_IGNORE;
+}
