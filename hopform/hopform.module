@@ -692,6 +692,7 @@ function hopform_forms($form_id) {
 }
 
 function hopform_form_display($form) {
+  drupal_page_is_cacheable(FALSE);
   return drupal_get_form(HOPFORM_FORM_PREFIX . $form->fid);
 }
 
