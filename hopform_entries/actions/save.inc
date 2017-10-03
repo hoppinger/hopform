@@ -14,6 +14,18 @@ function hopform_entries_hopform_action_save_form($action, &$form, &$form_state)
     '#default_value' => $action->settings['ftp_upload_required'],
   );
 
+  $form['ftp']['ftp_incremental'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Use incremental uploading'),
+    '#description' => t('Check this box if you only want to upload the items that are not uploaded yet.'),
+    '#default_value' => !empty($action->settings['ftp_incremental']) ? TRUE : FALSE,
+    '#states' => array(
+      'invisible' => array(
+         ':input[name="ftp_upload_required"]' => array('checked' => FALSE),
+      ),
+    ),
+  );
+
   $form['ftp']['ftp_host'] = array(
     '#type' => 'textfield',
     '#title' => t('Hostname'),
@@ -186,10 +198,21 @@ function hopform_entries_hopform_action_save_form_submit($action, $form, &$form_
     'ftp_pass',
     'ftp_path',
     'ftp_upload_frequency_hours',
+    'ftp_incremental',
   ) as $field) {
     if ($enabled) {
-      if (!($field == 'ftp_pass' && empty($form_state['values'][$field]))) {
-        $action->settings[$field] = $form_state['values'][$field];
+      switch ($field) {
+        case 'ftp_pass':
+          if (!empty($form_state['values'][$field])) {
+            $action->settings[$field] = $form_state['values'][$field];
+          }
+          break;
+        case 'ftp_incremental':
+          $action->settings[$field] = (bool) $form_state['values'][$field];
+          break;
+        default:
+          $action->settings[$field] = $form_state['values'][$field];
+          break;
       }
     } else {
       if (array_key_exists($field, $action->settings)) {

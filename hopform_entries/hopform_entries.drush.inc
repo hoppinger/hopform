@@ -16,7 +16,7 @@ function hopform_entries_drush_command() {
  * Callback for the hop-upload-csv-command
  */
 function drush_hopform_entries_upload_csv() {
-  $current_time = time();
+  $current_time = REQUEST_TIME;
 
   // load type = 'save' values from db
   $aids = db_select('hopform_form_actions', 'hfa')
@@ -27,12 +27,13 @@ function drush_hopform_entries_upload_csv() {
   // check if has ftp upload enabled
   foreach ($aids as $aid) {
     $action = hopform_form_action_load($aid);
-    $previous_time = !empty($action->settings['ftp_last_upload']) ? intval($action->settings['ftp_last_upload']) : 0;
-    $difference = intval(round(floatval($current_time - $previous_time) / 3600.0));
 
     if (empty($action->settings['ftp_upload_required'])) {
       continue;
     }
+
+    $previous_time = !empty($action->settings['ftp_last_upload']) ? intval($action->settings['ftp_last_upload']) : 0;
+    $difference = intval(round(floatval($current_time - $previous_time) / 3600.0));
     
     // check if upload frequency time is passed
     if ($action->settings['ftp_upload_frequency_hours'] > $difference) {
@@ -43,7 +44,11 @@ function drush_hopform_entries_upload_csv() {
     $form = hopform_form_id_form($action->fid);
     
     // build csv file
-    $file = hopform_entries_create_temporary_csv($form, 'hopform_form_export_');
+    if (!empty($action->settings['ftp_incremental'])) {
+      $file = hopform_entries_create_temporary_incremental_csv($form, 'hopform_form_export_', $previous_time, $current_time);
+    } else {
+      $file = hopform_entries_create_temporary_full_csv($form, 'hopform_form_export_');
+    }
     
     // upload file to ftp
     $upload_result = hopform_entries_upload_file($file, $action);
@@ -53,6 +58,7 @@ function drush_hopform_entries_upload_csv() {
         '@title' => $form->title,
         '@hostname' => $action->settings['ftp_host'],
       ), WATCHDOG_ERROR, 'form/' . $form->fid . '/actions/' . $action->aid . '/edit');
+      return;
     }
 
     $action->settings['ftp_last_upload'] = $current_time;
