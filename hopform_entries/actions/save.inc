@@ -114,14 +114,14 @@ function hopform_entries_hopform_action_save_form_validate($action, $form, &$for
 
     if (!($field == 'ftp_pass' && !empty($action->settings['ftp_pass']))) {
       if (!$key_exists || empty($value)) {
-        form_error($element, $t('!name field is required.', array('!name' => $element['#title'])));
+        form_error($element, t('!name field is required.', array('!name' => $element['#title'])));
         continue;
       }
     }
 
     if ($field == 'ftp_port') {
       if (!is_numeric($value)) {
-        form_error($element, $t('!name field should be a number.', array('!name' => $element['#title'])));
+        form_error($element, t('!name field should be a number.', array('!name' => $element['#title'])));
       }
     }
 
