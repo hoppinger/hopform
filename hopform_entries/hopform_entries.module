@@ -230,12 +230,7 @@ function hopform_form_construct_table($form) {
     'created' => t('Created'),
   );
   foreach ($_headers as $key => $title) {
-    foreach ($_rows as $_row) {
-      if (isset($_row['data'][$key])) {
-        $headers['data-' . $key] = $title;
-        continue;
-      }
-    }
+    $headers['data-' . $key] = $title;
   }
 
   $rows = array();
