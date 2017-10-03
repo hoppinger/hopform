@@ -321,14 +321,17 @@ function hopform_entries_export($form, &$form_state, $f) {
 }
 
 function hopform_entries_export_submit($form, &$form_state) {
-  $file = hopform_entries_create_csv($form_state['hopform_form'], 'hopform_form_export');
+  $file = hopform_entries_create_full_csv($form_state['hopform_form'], 'hopform_form_export');
 
   drupal_set_message(t('The CSV file that contains the exported form entries is generated. You can download it <a href="!link">here</a>. This link will be valid for @interval.', array('!link' => file_create_url($file), '@interval' => format_interval(DRUPAL_MAXIMUM_TEMP_FILE_AGE))));
 }
 
-function hopform_entries_create_temporary_csv($form_object, $filename) {
+function hopform_entries_create_temporary_full_csv($form_object, $filename) {
   $table = hopform_form_construct_table($form_object);
+  return hopform_entries_create_temporary_csv_from_table($table, $filename);
+}
 
+function hopform_entries_create_temporary_csv_from_table($table, $filename) {
   $result = array(array_values($table['headers']));
   foreach ($table['rows'] as $_row) {
     $row = array();
@@ -350,8 +353,9 @@ function hopform_entries_create_temporary_csv($form_object, $filename) {
   return $temp_file;
 }
 
-function hopform_entries_create_csv($form_object, $filename) {
-  $temp_file = hopform_entries_create_temporary_csv($form_object, $filename);
+
+function hopform_entries_create_full_csv($form_object, $filename) {
+  $temp_file = hopform_entries_create_temporary_full_csv($form_object, $filename);
 
   $source = (object) array(
     'uri' => $temp_file,
